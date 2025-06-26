@@ -1,0 +1,37 @@
+[project]
+name = "usa-spending-mcp-server"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Samuel Levy",email = "heysamlevy@gmail.com"}
+]
+readme = "README.md"
+requires-python = "^3.13"
+dependencies = [
+    "mcp (>=1.9.4,<1.10.0)",
+    "fastmcp (>=2.9.2,<3.0.0)",
+    "httpx (>=0.28.1,<0.29.0)"
+]
+
+[tool.poetry]
+packages = [{include = "usa_spending_mcp_server", from = "src"}]
+
+[tool.poetry.scripts]
+usa-spending-mcp-server = "usa_spending_mcp_server.server:main"
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+isort = "^6.0.1"
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
