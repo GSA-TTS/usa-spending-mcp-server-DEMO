@@ -46,7 +46,7 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                 - For districts: State code + district (WA01, CA12)
                 - For ZIP: 5-digit ZIP codes (98101, 90210)
             award_types: Award type codes to filter by (e.g., 'A', 'B', 'C', 'D')
-            agencies: Agency names to filter by
+            agencies: Agency names to filter by (format: "type:tier:name" or just "name" for default awarding:toptier)
             recipients: Recipient names to search for
             naics_codes: NAICS industry codes to filter by
             psc_codes: Product/Service codes to filter by
@@ -90,9 +90,39 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                 payload["filters"]["award_type_codes"] = award_types.split(",")
 
             if agencies:
-                payload["filters"]["agencies"] = [
-                    {"name": name.strip()} for name in agencies.split(",")
-                ]
+                agency_objects = []
+                for agency_str in agencies.split(","):
+                    agency_str = agency_str.strip()
+
+                    # Parse agency string format: "type:tier:name" or just "name"
+                    if ":" in agency_str:
+                        parts = agency_str.split(":")
+                        if len(parts) >= 3:
+                            agency_type, tier, name = (
+                                parts[0],
+                                parts[1],
+                                ":".join(parts[2:]),
+                            )
+                        else:
+                            # Default values if not fully specified
+                            agency_type, tier, name = "awarding", "toptier", agency_str
+                    else:
+                        # Default values for simple name
+                        agency_type, tier, name = "awarding", "toptier", agency_str
+
+                    agency_obj = {"type": agency_type, "tier": tier, "name": name}
+
+                    # Add toptier_name if tier is subtier and it's provided
+                    if (
+                        tier == "subtier"
+                        and ":" in agency_str
+                        and len(agency_str.split(":")) >= 4
+                    ):
+                        agency_obj["toptier_name"] = agency_str.split(":")[3]
+
+                    agency_objects.append(agency_obj)
+
+                payload["filters"]["agencies"] = agency_objects
 
             if recipients:
                 payload["filters"]["recipient_search_text"] = recipients.split(",")
