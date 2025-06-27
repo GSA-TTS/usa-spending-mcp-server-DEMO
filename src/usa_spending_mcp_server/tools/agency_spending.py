@@ -15,163 +15,146 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def get_agency_overview(
-        toptier_code: str,
-        fiscal_year: Optional[int] = None,
+        agency_id: str,
     ) -> str:
         """
-        Get agency overview information including total spending, award counts, and basic details.
+        Get agency overview information. This is useful to get information about the active financial year/quarter.
+        It will also display information about outlay amount, obligated amount, budget authority amount,
+        and current total budget authority amount.
 
         Args:
-            toptier_code: The agency's top-tier code (e.g., '097' for DOD, '020' for Treasury)
-            fiscal_year: Optional fiscal year to filter data (defaults to current fiscal year)
+            agency_id: The agency_id (not that this is different than the top tier code)
 
         Returns:
             Raw API response data as JSON string containing agency overview
         """
         try:
-            params = {}
-            if fiscal_year is not None:
-                params["fiscal_year"] = fiscal_year
-
-            response = await client.get(f"agency/{toptier_code}/", params=params)
+            response = await client.get(f"references/agency/{agency_id}/")
             return json.dumps(response, indent=2)
 
         except Exception as e:
             return f"Error getting agency overview: {str(e)}"
 
     @mcp.tool()
-    async def get_agency_awards(
+    async def get_sub_agency_list(
         toptier_code: str,
-        fiscal_year: Optional[int] = None,
-        award_type_codes: Optional[str] = None,
-        award_amounts: Optional[str] = None,
-        recipient_search_text: Optional[str] = None,
-        recipient_type_names: Optional[str] = None,
-        recipient_locations: Optional[str] = None,
-        place_of_performance_locations: Optional[str] = None,
-        agencies: Optional[str] = None,
-        federal_accounts: Optional[str] = None,
-        object_class: Optional[str] = None,
-        program_activities: Optional[str] = None,
-        naics_codes: Optional[str] = None,
-        psc_codes: Optional[str] = None,
-        contract_pricing_type_codes: Optional[str] = None,
-        set_aside_type_codes: Optional[str] = None,
-        extent_competed_type_codes: Optional[str] = None,
-        page: int = 1,
-        limit: int = 100,
-        sort: str = "Award Amount",
-        order: str = "desc",
+        fiscal_year: Optional[str] = None,
+        sort: Optional[str] = None,
+        page: Optional[int] = 1,
+        limit: Optional[int] = 100,
     ) -> str:
         """
-        Get agency awards data with comprehensive filtering options.
+        Given a toptier_code of an agency, this tool returns the list of subagencies and offices based on provided toptier_code,
+        fiscal year, and award type. This can be by either funding agency or awarding agency.
 
         Args:
-            toptier_code: The agency's top-tier code (e.g., '097' for DOD)
-            fiscal_year: Optional fiscal year to filter data
-            award_type_codes: Award type codes to filter by (e.g., 'A,B,C,D' for contracts)
-            award_amounts: Award amount range (e.g., '1000000,10000000' for $1M-$10M)
-            recipient_search_text: Text to search in recipient names
-            recipient_type_names: Recipient type names to filter by
-            recipient_locations: Recipient location codes to filter by
-            place_of_performance_locations: Place of performance location codes
-            agencies: Sub-agency names to filter by
-            federal_accounts: Federal account codes to filter by
-            object_class: Object class codes to filter by
-            program_activities: Program activity codes to filter by
-            naics_codes: NAICS industry codes to filter by
-            psc_codes: Product/Service codes to filter by
-            contract_pricing_type_codes: Contract pricing type codes
-            set_aside_type_codes: Set aside type codes
-            extent_competed_type_codes: Extent competed type codes
-            page: Page number for pagination (default: 1)
-            limit: Number of results per page (default: 100, max: 500)
-            sort: Sort field (default: 'Award Amount')
-            order: Sort order - 'asc' or 'desc' (default: 'desc')
-
+            toptier_code: The toptier_code of funding or awarding agency
+            fiscal_year: The fiscal year (YYYY) defaults to current fiscal year
+            sort: The sort order. One of name,total_obligations (default),transaction_amount,new_award_count
+            page: Page number to return (Default 1)
+            limit: Number of results (Default 100)
         Returns:
-            Raw API response data as JSON string containing agency awards
+            Raw API response data as JSON string containing list of subagencies and offices
         """
         try:
-            payload = {
-                "page": page,
-                "limit": limit,
-                "sort": sort,
-                "order": order,
-                "filters": {},
-            }
+            params = {}
+            if fiscal_year:
+                params["fiscal_year"] = fiscal_year
+            if sort:
+                params["sort"] = sort
+            if page:
+                params["page"] = page
+            if limit:
+                params["limit"] = limit
 
-            if fiscal_year is not None:
-                payload["filters"]["fy"] = str(fiscal_year)
-
-            if award_type_codes:
-                payload["filters"]["award_type_codes"] = award_type_codes.split(",")
-
-            if award_amounts:
-                amounts = award_amounts.split(",")
-                if len(amounts) == 2:
-                    payload["filters"]["award_amounts"] = {
-                        "lower_bound": float(amounts[0]),
-                        "upper_bound": float(amounts[1]),
-                    }
-
-            if recipient_search_text:
-                payload["filters"]["recipient_search_text"] = [recipient_search_text]
-
-            if recipient_type_names:
-                payload["filters"]["recipient_type_names"] = recipient_type_names.split(
-                    ","
-                )
-
-            if recipient_locations:
-                payload["filters"]["recipient_locations"] = [
-                    {"country": "USA", "state": code.strip()}
-                    for code in recipient_locations.split(",")
-                ]
-
-            if place_of_performance_locations:
-                payload["filters"]["place_of_performance_locations"] = [
-                    {"country": "USA", "state": code.strip()}
-                    for code in place_of_performance_locations.split(",")
-                ]
-
-            if agencies:
-                payload["filters"]["agencies"] = [
-                    {"name": name.strip()} for name in agencies.split(",")
-                ]
-
-            if federal_accounts:
-                payload["filters"]["federal_accounts"] = federal_accounts.split(",")
-
-            if object_class:
-                payload["filters"]["object_class"] = object_class.split(",")
-
-            if program_activities:
-                payload["filters"]["program_activities"] = program_activities.split(",")
-
-            if naics_codes:
-                payload["filters"]["naics_codes"] = naics_codes.split(",")
-
-            if psc_codes:
-                payload["filters"]["psc_codes"] = psc_codes.split(",")
-
-            if contract_pricing_type_codes:
-                payload["filters"]["contract_pricing_type_codes"] = (
-                    contract_pricing_type_codes.split(",")
-                )
-
-            if set_aside_type_codes:
-                payload["filters"]["set_aside_type_codes"] = set_aside_type_codes.split(
-                    ","
-                )
-
-            if extent_competed_type_codes:
-                payload["filters"]["extent_competed_type_codes"] = (
-                    extent_competed_type_codes.split(",")
-                )
-
-            response = await client.get(f"agency/{toptier_code}/awards/", payload)
+            response = await client.get(
+                f"agency/{toptier_code}/sub_agency/", params=params
+            )
             return json.dumps(response, indent=2)
 
         except Exception as e:
-            return f"Error getting agency awards: {str(e)}"
+            return f"Error getting sub-agency list: {str(e)}"
+
+    @mcp.tool()
+    async def get_sub_components_list(
+        toptier_code: str,
+        fiscal_year: Optional[str] = None,
+        sort: Optional[str] = None,
+        page: Optional[int] = 1,
+        limit: Optional[int] = 100,
+    ) -> str:
+        """
+        Get list of all sub-components for a given agency based on toptier_code.
+        This returns all the sub-components/bureaus/offices under the specified agency.
+
+        Args:
+            toptier_code: The toptier_code of the agency (e.g., '012' for USDA)
+            fiscal_year: The fiscal year (YYYY) defaults to current fiscal year
+            sort: The sort order. One of name,total_obligations (default),transaction_amount,new_award_count
+            page: Page number to return (Default 1)
+            limit: Number of results (Default 100)
+
+        Returns:
+            Raw API response data as JSON string containing list of sub-components
+        """
+        try:
+            params = {}
+            if fiscal_year:
+                params["fiscal_year"] = fiscal_year
+            if sort:
+                params["sort"] = sort
+            if page:
+                params["page"] = page
+            if limit:
+                params["limit"] = limit
+
+            response = await client.get(
+                f"agency/{toptier_code}/sub_components/", params=params
+            )
+            return json.dumps(response, indent=2)
+
+        except Exception as e:
+            return f"Error getting sub-components list: {str(e)}"
+
+    @mcp.tool()
+    async def get_sub_component_details(
+        toptier_code: str,
+        bureau_slug: str,
+        fiscal_year: Optional[str] = None,
+        sort: Optional[str] = None,
+        page: Optional[int] = 1,
+        limit: Optional[int] = 100,
+    ) -> str:
+        """
+        Get detailed information about a specific sub-component within an agency.
+        This provides detailed spending and budget information for a specific bureau/office.
+
+        Args:
+            toptier_code: The toptier_code of the agency (e.g., '012' for USDA)
+            bureau_slug: The slug of the sub-component (e.g., 'farm-service-agency')
+            fiscal_year: The fiscal year (YYYY) defaults to current fiscal year
+            sort: The sort order. One of name,total_obligations (default),transaction_amount,new_award_count
+            page: Page number to return (Default 1)
+            limit: Number of results (Default 100)
+
+        Returns:
+            Raw API response data as JSON string containing detailed sub-component information
+        """
+        try:
+            params = {}
+            if fiscal_year:
+                params["fiscal_year"] = fiscal_year
+            if sort:
+                params["sort"] = sort
+            if page:
+                params["page"] = page
+            if limit:
+                params["limit"] = limit
+
+            response = await client.get(
+                f"agency/{toptier_code}/sub_components/{bureau_slug}/", params=params
+            )
+            return json.dumps(response, indent=2)
+
+        except Exception as e:
+            return f"Error getting sub-component details: {str(e)}"

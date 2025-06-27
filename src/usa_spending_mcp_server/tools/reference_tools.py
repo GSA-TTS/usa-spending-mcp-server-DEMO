@@ -35,27 +35,6 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
             return f"Error fetching agencies: {str(e)}"
 
     @mcp.tool()
-    async def get_agency_by_id(agency_id: int) -> str:
-        """
-        Get specific US agency information by ID.
-
-        Args:
-            agency_id: The agency ID to look up
-
-        Returns:
-            Raw API response data as JSON string containing agency details
-        """
-        try:
-            # Make API call
-            response = await client.get(f"references/toptier_agencies/{agency_id}/")
-
-            # Return raw API response
-            return json.dumps(response, indent=2)
-
-        except Exception as e:
-            return f"Error fetching agency {agency_id}: {str(e)}"
-
-    @mcp.tool()
     async def get_award_types() -> str:
         """
         Get all available award types and their codes.
@@ -68,7 +47,7 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
         """
         try:
             # Make API call
-            response = await client.get("references/filter/")
+            response = await client.get("references/award_types/")
 
             # Return raw API response
             return json.dumps(response, indent=2)
@@ -153,3 +132,23 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
 
         except Exception as e:
             return f"Error fetching CFDA programs: {str(e)}"
+
+    @mcp.tool()
+    async def get_glossary() -> str:
+        """
+        Get glossary terms to help understand and present analysis of data
+
+        Returns:
+            Raw API response data as JSON string containing glossary terms
+        """
+        try:
+            endpoint = "references/glossary/"
+
+            # Make API call
+            response = await client.get(endpoint)
+
+            # Return raw API response
+            return json.dumps(response, indent=2)
+
+        except Exception as e:
+            return f"Error fetching glossary:  {str(e)}"

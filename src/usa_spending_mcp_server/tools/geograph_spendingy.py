@@ -21,13 +21,8 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
         award_types: Optional[str] = None,
         agencies: Optional[str] = None,
         recipients: Optional[str] = None,
-        naics_codes: Optional[str] = None,
-        psc_codes: Optional[str] = None,
-        cfda_codes: Optional[str] = None,
         start_date: str = "2023-10-01",
         end_date: str = "2024-09-30",
-        min_award_amount: Optional[float] = None,
-        max_award_amount: Optional[float] = None,
         subawards: bool = False,
         page: int = 1,
         limit: int = 100,
@@ -48,13 +43,8 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
             award_types: Award type codes to filter by (e.g., 'A', 'B', 'C', 'D')
             agencies: Agency names to filter by (format: "type:tier:name" or just "name" for default awarding:toptier)
             recipients: Recipient names to search for
-            naics_codes: NAICS industry codes to filter by
-            psc_codes: Product/Service codes to filter by
-            cfda_codes: CFDA program codes to filter by
             start_date: Start date in YYYY-MM-DD format (required)
             end_date: End date in YYYY-MM-DD format (required)
-            min_award_amount: Minimum award amount
-            max_award_amount: Maximum award amount
             subawards: Include subaward data (default: False)
             page: Page number for pagination (default: 1)
             limit: Number of results per page (default: 100, max: 500)
@@ -126,22 +116,6 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
 
             if recipients:
                 payload["filters"]["recipient_search_text"] = recipients.split(",")
-
-            if naics_codes:
-                payload["filters"]["naics_codes"] = naics_codes.split(",")
-
-            if psc_codes:
-                payload["filters"]["psc_codes"] = psc_codes.split(",")
-
-            if cfda_codes:
-                payload["filters"]["cfda_codes"] = cfda_codes.split(",")
-
-            if min_award_amount is not None or max_award_amount is not None:
-                payload["filters"]["award_amounts"] = {}
-                if min_award_amount is not None:
-                    payload["filters"]["award_amounts"]["min"] = min_award_amount
-                if max_award_amount is not None:
-                    payload["filters"]["award_amounts"]["max"] = max_award_amount
 
             # Make API call
             response = await client.post("search/spending_by_geography/", payload)
