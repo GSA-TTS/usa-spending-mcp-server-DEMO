@@ -21,6 +21,28 @@ A simple MCP server for interacting with the USAspending.gov API.
    poetry env activate
    ```
 
+## Simple way to connect to Claude 
+1. Get path 
+   ```sh
+   ➜  usa-spending-mcp-server git:(feature/award_spending) poetry run which usa-spending-mcp-server
+   /Users/samuellevy/Library/Caches/pypoetry/virtualenvs/usa-spending-mcp-server-4uFFGwlz-py3.13/bin/usa-spending-mcp-server
+   ```
+2. Copy path into Claude MCP config
+   ```
+   {
+     "mcpServers": {
+       "usa-spending": {
+         "command": "/Users/samuellevy/Library/Caches/pypoetry/virtualenvs/usa-spending-mcp-server-4uFFGwlz-py3.13/bin/usa-spending-mcp-server",
+         "args": [],
+         "env": {}
+       }
+     }
+   }
+   ```
+3. Anytime you need to update mcp server rerun
+   ```sh
+   poetry install
+   ```  
 ## Running the Server
 
 ```sh
