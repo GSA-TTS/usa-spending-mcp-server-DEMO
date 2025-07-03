@@ -1,13 +1,10 @@
 import json
-import logging
 from typing import Optional
 
 from fastmcp import FastMCP
 
 from usa_spending_mcp_server.client import USASpendingClient
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+from usa_spending_mcp_server.models.common_models import AgencyListParams
 
 
 def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
@@ -40,8 +37,8 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
         toptier_code: str,
         fiscal_year: Optional[str] = None,
         sort: Optional[str] = None,
-        page: Optional[int] = 1,
-        limit: Optional[int] = 100,
+        page: Optional[str] = "1",
+        limit: Optional[str] = "100",
     ) -> str:
         """
         Given a toptier_code of an agency, this tool returns the list of subagencies and offices based on provided toptier_code,
@@ -57,18 +54,12 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing list of subagencies and offices
         """
         try:
-            params = {}
-            if fiscal_year:
-                params["fiscal_year"] = fiscal_year
-            if sort:
-                params["sort"] = sort
-            if page:
-                params["page"] = page
-            if limit:
-                params["limit"] = limit
+            agency_list_params = AgencyListParams(
+                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
+            ).to_params_dict()
 
             response = await client.get(
-                f"agency/{toptier_code}/sub_agency/", params=params
+                f"agency/{toptier_code}/sub_agency/", params=agency_list_params
             )
             return json.dumps(response, indent=2)
 
@@ -80,8 +71,8 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
         toptier_code: str,
         fiscal_year: Optional[str] = None,
         sort: Optional[str] = None,
-        page: Optional[int] = 1,
-        limit: Optional[int] = 100,
+        page: Optional[str] = "1",
+        limit: Optional[str] = "100",
     ) -> str:
         """
         Get list of all sub-components for a given agency based on toptier_code.
@@ -98,18 +89,12 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing list of sub-components
         """
         try:
-            params = {}
-            if fiscal_year:
-                params["fiscal_year"] = fiscal_year
-            if sort:
-                params["sort"] = sort
-            if page:
-                params["page"] = page
-            if limit:
-                params["limit"] = limit
+            agency_list_params = AgencyListParams(
+                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
+            ).to_params_dict()
 
             response = await client.get(
-                f"agency/{toptier_code}/sub_components/", params=params
+                f"agency/{toptier_code}/sub_components/", params=agency_list_params
             )
             return json.dumps(response, indent=2)
 
@@ -122,8 +107,8 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
         bureau_slug: str,
         fiscal_year: Optional[str] = None,
         sort: Optional[str] = None,
-        page: Optional[int] = 1,
-        limit: Optional[int] = 100,
+        page: Optional[str] = "1",
+        limit: Optional[str] = "100",
     ) -> str:
         """
         Get detailed information about a specific sub-component within an agency.
@@ -141,18 +126,13 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing detailed sub-component information
         """
         try:
-            params = {}
-            if fiscal_year:
-                params["fiscal_year"] = fiscal_year
-            if sort:
-                params["sort"] = sort
-            if page:
-                params["page"] = page
-            if limit:
-                params["limit"] = limit
+            agency_list_params = AgencyListParams(
+                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
+            ).to_params_dict()
 
             response = await client.get(
-                f"agency/{toptier_code}/sub_components/{bureau_slug}/", params=params
+                f"agency/{toptier_code}/sub_components/{bureau_slug}/",
+                params=agency_list_params,
             )
             return json.dumps(response, indent=2)
 
