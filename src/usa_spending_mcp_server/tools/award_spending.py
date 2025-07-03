@@ -1,13 +1,10 @@
 import json
-import logging
-from typing import List, Optional
+from typing import Optional
 
 from fastmcp import FastMCP
 
 from usa_spending_mcp_server.client import USASpendingClient
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+from usa_spending_mcp_server.models.award_spending_models import AwardSearchRequest
 
 
 def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
@@ -22,9 +19,9 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         recipients: Optional[str] = None,
         award_ids: Optional[str] = None,
         fields: Optional[str] = None,
-        subawards: bool = False,
-        page: int = 1,
-        limit: int = 10,
+        subawards: str = "False",
+        page: str = "1",
+        limit: str = "10",
         sort: Optional[str] = None,
         order: str = "desc",
     ) -> str:
@@ -62,89 +59,24 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         """
 
         try:
-            # Build the request payload
-            payload = {
-                "subawards": subawards,
-                "page": page,
-                "limit": limit,
-                "order": order,
-                "filters": {
-                    "time_period": [{"start_date": start_date, "end_date": end_date}],
-                    "award_type_codes": [
-                        code.strip() for code in award_type_codes.split(",")
-                    ],
-                },
-            }
-
-            # Set default fields if none provided
-            if fields:
-                payload["fields"] = [field.strip() for field in fields.split(",")]
-            else:
-                payload["fields"] = [
-                    "Award ID",
-                    "Recipient Name",
-                    "Start Date",
-                    "End Date",
-                    "Award Amount",
-                    "Awarding Agency",
-                    "Awarding Sub Agency",
-                    "Award Type",
-                ]
-
-            # Add sort field if provided
-            if sort:
-                payload["sort"] = sort
-
-            # Handle agencies filter
-            if agencies:
-                agency_objects = []
-                for agency_str in agencies.split(","):
-                    agency_str = agency_str.strip()
-
-                    # Parse agency string format: "type:tier:name" or just "name"
-                    if ":" in agency_str:
-                        parts = agency_str.split(":")
-                        if len(parts) >= 3:
-                            agency_type, tier, name = (
-                                parts[0],
-                                parts[1],
-                                ":".join(parts[2:]),
-                            )
-                        else:
-                            # Default values if not fully specified
-                            agency_type, tier, name = "awarding", "toptier", agency_str
-                    else:
-                        # Default values for simple name
-                        agency_type, tier, name = "awarding", "toptier", agency_str
-
-                    agency_obj = {"type": agency_type, "tier": tier, "name": name}
-
-                    # Add toptier_name if tier is subtier and it's provided
-                    if (
-                        tier == "subtier"
-                        and ":" in agency_str
-                        and len(agency_str.split(":")) >= 4
-                    ):
-                        agency_obj["toptier_name"] = agency_str.split(":")[3]
-
-                    agency_objects.append(agency_obj)
-
-                payload["filters"]["agencies"] = agency_objects
-
-            # Handle recipients filter
-            if recipients:
-                payload["filters"]["recipient_search_text"] = [
-                    recipient.strip() for recipient in recipients.split(",")
-                ]
-
-            # Handle award IDs filter
-            if award_ids:
-                payload["filters"]["award_ids"] = [
-                    award_id.strip() for award_id in award_ids.split(",")
-                ]
-
+            request = AwardSearchRequest.from_params(
+                award_type_codes=award_type_codes,
+                start_date=start_date,
+                end_date=end_date,
+                agencies=agencies,
+                recipients=recipients,
+                award_ids=award_ids,
+                fields=fields,
+                subawards=subawards,
+                page=page,
+                limit=limit,
+                sort=sort,
+                order=order,
+            )
             # Make API call
-            response = await client.post("search/spending_by_award/", payload)
+            response = await client.post(
+                "search/spending_by_award/", request.to_api_payload()
+            )
 
             # Return raw API response
             return json.dumps(response, indent=2)

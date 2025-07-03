@@ -1,13 +1,9 @@
 import json
-import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastmcp import FastMCP
 
 from usa_spending_mcp_server.client import USASpendingClient
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 
 def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
