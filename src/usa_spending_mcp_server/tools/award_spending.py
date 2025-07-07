@@ -18,6 +18,8 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         agencies: Optional[str] = None,
         recipients: Optional[str] = None,
         award_ids: Optional[str] = None,
+        keywords: Optional[str] = None,
+        award_amounts: Optional[str] = None,
         fields: Optional[str] = None,
         subawards: str = "False",
         page: str = "1",
@@ -44,6 +46,17 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             agencies: Agency names to filter by (format: "type:tier:name" or just "name" for default awarding:toptier)
             recipients: Recipient names to search for (comma-separated)
             award_ids: Award IDs to search for (comma-separated)
+            keywords: Keywords to search for in award descriptions (comma-separated)
+                - Searches across award descriptions
+                - Example: "transport,logistics" or "COVID-19"
+            award_amounts: Award amount ranges to filter by (semicolon-separated ranges)
+                - Format: "min-max" or "min-" (minimum only) or "-max" (maximum only)
+                - Multiple ranges separated by semicolon
+                - Examples:
+                    - "1000-5000" (between $1,000 and $5,000)
+                    - "100000-" (greater than or equal to $100,000)
+                    - "-50000" (less than or equal to $50,000)
+                    - "1000-5000;10000-50000" (multiple ranges)
             fields: Fields to return in response (comma-separated). Common fields:
                 - Award ID, Recipient Name, Start Date, End Date, Award Amount
                 - Awarding Agency, Awarding Sub Agency, Award Type
@@ -66,6 +79,8 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                 agencies=agencies,
                 recipients=recipients,
                 award_ids=award_ids,
+                keywords=keywords,
+                award_amounts=award_amounts,
                 fields=fields,
                 subawards=subawards,
                 page=page,
