@@ -44,6 +44,7 @@ class GeographySearchRequest(BaseSearchRequest):
     geo_layer_filters: List[str]
     filters: GeographySearchFilters
     sort: str = "aggregated_amount"
+    subawards: bool = False
 
     @field_validator("geo_layer_filters")
     @classmethod

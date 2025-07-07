@@ -91,10 +91,10 @@ class Agency(BaseModel):
         if len(parts) == 2:
             # Could be tier:name or type:name - assume tier:name for backward compatibility
             tier, name = parts
-            return cls(tier=tier, name=name)
+            return cls(tier=AgencyTier(tier), name=name)
         elif len(parts) == 3:
             type_val, tier, name = parts
-            return cls(type=type_val, tier=tier, name=name)
+            return cls(type=AgencyType(type_val), tier=AgencyTier(tier), name=name)
         else:
             return cls(name=agency_str)
 
@@ -111,8 +111,8 @@ class BaseSearchFilters(BaseModel):
 class BasePagination(BaseModel):
     """Base pagination parameters"""
 
-    page: int = Field(1, ge=1, description="Page number")
-    limit: int = Field(100, ge=1, le=500, description="Results per page")
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=100, ge=1, le=100, description="Results per page")
     order: SortOrder = SortOrder.DESC
 
 
@@ -120,7 +120,7 @@ class BaseSearchRequest(BaseModel):
     """Base search request with common parameters"""
 
     subawards: bool = False
-    pagination: BasePagination = Field(default_factory=BasePagination)
+    pagination: BasePagination = Field(default_factory=lambda: BasePagination())
 
     class Config:
         use_enum_values = True
@@ -136,4 +136,4 @@ class AgencyListParams(BaseModel):
 
     def to_params_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API params, excluding None values"""
-        return {k: v for k, v in self.dict().items() if v is not None}
+        return {k: v for k, v in self.model_dump().items() if v is not None}

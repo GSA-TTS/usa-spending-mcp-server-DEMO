@@ -74,13 +74,13 @@ class DetailedFilter(BaseModel):
     fy: str = Field(..., description="Fiscal year")
     quarter: Optional[Quarter] = Field(None, description="Quarter")
     period: Optional[Period] = Field(None, description="Period")
-    agency: Optional[int] = Field(None, description="Agency ID")
-    federal_account: Optional[int] = Field(None, description="Federal Account ID")
-    object_class: Optional[int] = Field(None, description="Object Class ID")
-    budget_function: Optional[int] = Field(None, description="Budget Function ID")
-    budget_subfunction: Optional[int] = Field(None, description="Budget Subfunction ID")
-    recipient: Optional[int] = Field(None, description="Recipient ID")
-    program_activity: Optional[int] = Field(None, description="Program Activity ID")
+    agency: Optional[str] = Field(None, description="Agency ID")
+    federal_account: Optional[str] = Field(None, description="Federal Account ID")
+    object_class: Optional[str] = Field(None, description="Object Class ID")
+    budget_function: Optional[str] = Field(None, description="Budget Function ID")
+    budget_subfunction: Optional[str] = Field(None, description="Budget Subfunction ID")
+    recipient: Optional[str] = Field(None, description="Recipient ID")
+    program_activity: Optional[str] = Field(None, description="Program Activity ID")
 
     @field_validator("fy")
     @classmethod
@@ -140,7 +140,7 @@ class SpendingExplorerRequest(BaseModel):
             filters = GeneralFilter(fy=fiscal_year, quarter=Quarter(quarter))
         else:
             # Detailed explorer - convert string parameters to integers where applicable
-            filters_dict = {"fy": fiscal_year}
+            filters_dict: Dict[str, Any] = {"fy": fiscal_year}
 
             if quarter:
                 filters_dict["quarter"] = Quarter(quarter)

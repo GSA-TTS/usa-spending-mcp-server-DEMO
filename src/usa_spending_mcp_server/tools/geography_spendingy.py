@@ -50,7 +50,7 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
             end_date: End date in YYYY-MM-DD format (required)
             subawards: Include subaward data (default: False)
             page: Page number for pagination (default: 1)
-            limit: Number of results per page (default: 100, max: 500)
+            limit: Number of results per page (default: 100, max: 100)
             sort: Sort field (default: 'aggregated_amount')
             order: Sort order - 'asc' or 'desc' (default: 'desc')
 

@@ -21,7 +21,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         fields: Optional[str] = None,
         subawards: str = "False",
         page: str = "1",
-        limit: str = "10",
+        limit: str = "100",
         sort: Optional[str] = None,
         order: str = "desc",
     ) -> str:
@@ -50,7 +50,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                 - Funding Agency, Funding Sub Agency
             subawards: Include subaward data (default: False)
             page: Page number for pagination (default: 1)
-            limit: Number of results per page (default: 10, max: 500)
+            limit: Number of results per page (default: 100, max: 100)
             sort: Field to sort by (any field from the response)
             order: Sort order - 'asc' or 'desc' (default: 'desc')
 
@@ -83,3 +83,46 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
         except Exception as e:
             return f"Error searching spending by award: {str(e)}"
+
+    @mcp.tool()
+    async def get_award_details(
+        award_id: str,
+    ) -> str:
+        """
+        Get detailed information about a specific government award.
+
+        This endpoint provides comprehensive details about a specific contract, grant, loan,
+        or other award including amounts, dates, recipients, agencies, and transaction history.
+
+        Args:
+            award_id: The unique award identifier (e.g., 'CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-')
+                - Contract IDs typically start with letters followed by numbers
+                - Grant IDs vary by agency
+                - Can be found using search_spending_by_award (generated_internal_id field) tool
+
+        Returns:
+            Raw API response data as JSON string containing:
+            - Award overview (total obligation, dates, type)
+            - Recipient details (name, address, DUNS/UEI)
+            - Agency information (awarding and funding agencies)
+            - Place of performance
+            - Transaction history
+            - Contract details (if applicable)
+            - Federal account funding
+            - Executive compensation (if disclosed)
+
+        Examples:
+            - Contract details: get_award_details(award_id='W91ZRU22C0001')
+            - Grant details: get_award_details(award_id='1234567')
+            - After searching: Use award IDs from search results for deep dives
+        """
+
+        try:
+            # Make API call
+            response = await client.get(f"awards/{award_id}/")
+
+            # Return raw API response
+            return json.dumps(response, indent=2)
+
+        except Exception as e:
+            return f"Error getting award details for {award_id}: {str(e)}"

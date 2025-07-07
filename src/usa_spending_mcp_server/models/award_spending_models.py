@@ -32,6 +32,7 @@ class AwardSearchRequest(BaseSearchRequest):
         "Award Type",
     ]
     sort: Optional[str] = None
+    subawards: bool = False
 
     @classmethod
     def from_params(
