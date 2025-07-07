@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional
 
+from pydantic import BaseModel
+
 from usa_spending_mcp_server.models.common_models import (
     Agency,
     AwardTypeCode,
@@ -11,10 +13,28 @@ from usa_spending_mcp_server.models.common_models import (
 )
 
 
+class AwardAmount(BaseModel):
+    """Award amount range filter"""
+
+    lower_bound: Optional[float] = None
+    upper_bound: Optional[float] = None
+
+    def dict(self) -> Dict[str, Any]:
+        """Convert to dictionary format"""
+        result = {}
+        if self.lower_bound is not None:
+            result["lower_bound"] = self.lower_bound
+        if self.upper_bound is not None:
+            result["upper_bound"] = self.upper_bound
+        return result
+
+
 class AwardSearchFilters(BaseSearchFilters):
     """Filters specific to award search"""
 
     award_ids: Optional[List[str]] = None
+    keywords: Optional[List[str]] = None
+    award_amounts: Optional[List[AwardAmount]] = None
 
 
 class AwardSearchRequest(BaseSearchRequest):
@@ -32,6 +52,7 @@ class AwardSearchRequest(BaseSearchRequest):
         "Award Type",
     ]
     sort: Optional[str] = None
+    subawards: bool = False
 
     @classmethod
     def from_params(
@@ -42,6 +63,8 @@ class AwardSearchRequest(BaseSearchRequest):
         agencies: Optional[str] = None,
         recipients: Optional[str] = None,
         award_ids: Optional[str] = None,
+        keywords: Optional[str] = None,
+        award_amounts: Optional[str] = None,
         fields: Optional[str] = None,
         subawards: str = "false",  # Changed to str
         page: str = "1",  # Changed to str
@@ -49,7 +72,25 @@ class AwardSearchRequest(BaseSearchRequest):
         sort: Optional[str] = None,
         order: str = "desc",
     ) -> "AwardSearchRequest":
-        """Create AwardSearchRequest from individual parameters"""
+        """Create AwardSearchRequest from individual parameters
+
+        Args:
+            award_type_codes: Comma-separated award type codes
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            agencies: Comma-separated agency strings
+            recipients: Comma-separated recipient names
+            award_ids: Comma-separated award IDs
+            keywords: Comma-separated keywords to search in award descriptions
+            award_amounts: Semicolon-separated ranges in format "min-max" or "min-" or "-max"
+                          Example: "1000-5000;10000-50000" or "100000-" or "-1000"
+            fields: Comma-separated field names
+            subawards: Whether to include subawards
+            page: Page number
+            limit: Results per page
+            sort: Sort field
+            order: Sort order (asc/desc)
+        """
 
         # Convert string parameters to proper types
         subawards_bool = str(subawards).lower() in ("true", "1", "yes", "on")
@@ -77,6 +118,25 @@ class AwardSearchRequest(BaseSearchRequest):
         if award_ids:
             award_id_list = [aid.strip() for aid in award_ids.split(",")]
 
+        # Parse keywords
+        keyword_list = None
+        if keywords:
+            keyword_list = [k.strip() for k in keywords.split(",")]
+
+        # Parse award amounts
+        award_amount_list = None
+        if award_amounts:
+            award_amount_list = []
+            for amount_range in award_amounts.split(";"):
+                amount_range = amount_range.strip()
+                if "-" in amount_range:
+                    parts = amount_range.split("-", 1)
+                    lower = float(parts[0]) if parts[0] else None
+                    upper = float(parts[1]) if parts[1] else None
+                    award_amount_list.append(
+                        AwardAmount(lower_bound=lower, upper_bound=upper)
+                    )
+
         # Parse fields
         field_list = None
         if fields:
@@ -89,6 +149,8 @@ class AwardSearchRequest(BaseSearchRequest):
             agencies=agency_objects if agency_objects else None,
             recipient_search_text=recipient_list,
             award_ids=award_id_list,
+            keywords=keyword_list,
+            award_amounts=award_amount_list,
         )
 
         # Create pagination
@@ -138,5 +200,18 @@ class AwardSearchRequest(BaseSearchRequest):
         if self.filters.award_ids:
             payload["filters"]["award_ids"] = self.filters.award_ids
 
-        # Remove None values
+        if self.filters.keywords:
+            payload["filters"]["keywords"] = self.filters.keywords
+
+        if self.filters.award_amounts:
+            payload["filters"]["award_amounts"] = [
+                amount.dict() for amount in self.filters.award_amounts
+            ]
+
+        # Remove None values from filters
+        payload["filters"] = {
+            k: v for k, v in payload["filters"].items() if v is not None
+        }
+
+        # Remove None values from top level
         return {k: v for k, v in payload.items() if v is not None}
