@@ -1,5 +1,4 @@
-import json
-from typing import Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -14,18 +13,8 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def search_spending_explorer(
-        type: str,
-        fiscal_year: str,
-        quarter: Optional[str] = None,
-        period: Optional[str] = None,
-        agency: Optional[str] = None,
-        federal_account: Optional[str] = None,
-        object_class: Optional[str] = None,
-        budget_function: Optional[str] = None,
-        budget_subfunction: Optional[str] = None,
-        recipient: Optional[str] = None,
-        program_activity: Optional[str] = None,
-    ) -> str:
+        spending_explorer_request: SpendingExplorerRequest,
+    ) -> Any:
         """
         Search USA government spending data using the Spending Explorer endpoint.
 
@@ -33,30 +22,36 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
         into specific subsets of data by level of detail.
 
         Args:
-            type: REQUIRED - The type of data to group by:
-                General Explorer (top-level entry points):
-                - "budget_function": Budget Functions
-                - "agency": Agencies
-                - "object_class": Object Classes
+            spending_explorer_request: SpendingExplorerRequest object containing:
+                - type: REQUIRED - ExplorerType enum value for data grouping:
+                    General Explorer (top-level entry points):
+                    - "budget_function": Budget Functions
+                    - "agency": Agencies
+                    - "object_class": Object Classes
 
-                Specific Explorer (drill-down types):
-                - "federal_account": Federal Accounts
-                - "recipient": Recipients
-                - "award": Awards
-                - "budget_subfunction": Budget Subfunctions
-                - "program_activity": Program Activities
+                    Specific Explorer (drill-down types):
+                    - "federal_account": Federal Accounts
+                    - "recipient": Recipients
+                    - "award": Awards
+                    - "budget_subfunction": Budget Subfunctions
+                    - "program_activity": Program Activities
 
-            fiscal_year: REQUIRED - Fiscal year (e.g., "2020")
-            quarter: Quarter to limit data to (1, 2, 3, 4). For general explorer, this is required.
-                    Data includes all quarters up to and including the specified quarter.
-            period: Period to limit data to (1-12). Optional alternative to quarter.
-            agency: Agency ID to filter by (from previous general explorer response)
-            federal_account: Federal Account ID to filter by (from previous explorer response)
-            object_class: Object Class ID to filter by
-            budget_function: Budget Function ID to filter by
-            budget_subfunction: Budget Subfunction ID to filter by
-            recipient: Recipient ID to filter by
-            program_activity: Program Activity ID to filter by
+                - filters: Union[GeneralFilter, DetailedFilter] containing:
+                    For GeneralFilter:
+                    - fy: REQUIRED - Fiscal year (e.g., "2020")
+                    - quarter: REQUIRED - Quarter enum ("1", "2", "3", "4")
+
+                    For DetailedFilter:
+                    - fy: REQUIRED - Fiscal year (e.g., "2020")
+                    - quarter: Optional - Quarter enum ("1", "2", "3", "4")
+                    - period: Optional - Period enum ("1" through "12")
+                    - agency: Optional - Agency ID to filter by
+                    - federal_account: Optional - Federal Account ID to filter by
+                    - object_class: Optional - Object Class ID to filter by
+                    - budget_function: Optional - Budget Function ID to filter by
+                    - budget_subfunction: Optional - Budget Subfunction ID to filter by
+                    - recipient: Optional - Recipient ID to filter by
+                    - program_activity: Optional - Program Activity ID to filter by
 
         Returns:
             Raw API response data as JSON string containing:
@@ -67,30 +62,31 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
         Notes:
             - Data is not available prior to FY 2017 Q2
             - Data for latest complete quarter not available until 45 days after quarter close
-            - For general explorer, you must specify one of: budget_function, agency, or object_class
+            - For general explorer, you must specify one of: budget_function, agency,
+                or object_class
             - For specific explorer, you filter by combining multiple grouping fields
+
+        Examples:
+            - General agency search:
+                search_spending_explorer(SpendingExplorerRequest(
+                    type=ExplorerType.AGENCY,
+                    filters=GeneralFilter(fy="2024", quarter=Quarter.Q4)
+                ))
+            - Detailed federal account search:
+                search_spending_explorer(SpendingExplorerRequest(
+                    type=ExplorerType.FEDERAL_ACCOUNT,
+                    filters=DetailedFilter(fy="2024", agency="012", quarter=Quarter.Q2)
+                ))
         """
 
         try:
-            request = SpendingExplorerRequest.from_params(
-                type=type,
-                fiscal_year=fiscal_year,
-                quarter=quarter,
-                period=period,
-                agency=agency,
-                federal_account=federal_account,
-                object_class=object_class,
-                budget_function=budget_function,
-                budget_subfunction=budget_subfunction,
-                recipient=recipient,
-                program_activity=program_activity,
+            # Make API call
+            response = await client.post(
+                "spending/", spending_explorer_request.model_dump(exclude_none=True)
             )
 
-            # Make API call
-            response = await client.post("spending/", request.to_api_payload())
-
             # Return raw API response
-            return json.dumps(response, indent=2)
+            return response
 
         except Exception as e:
             return f"Error searching spending explorer: {str(e)}"

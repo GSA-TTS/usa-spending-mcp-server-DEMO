@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import field_validator, model_validator
 
 
@@ -51,8 +51,8 @@ class SortOrder(str, Enum):
 class TimePeriod(BaseModel):
     """Time period filter"""
 
-    start_date: str = Field(..., description="Start date in YYYY-MM-DD format")
-    end_date: str = Field(..., description="End date in YYYY-MM-DD format")
+    start_date: Annotated[str, Field(description="Start date in YYYY-MM-DD format")]
+    end_date: Annotated[str, Field(description="End date in YYYY-MM-DD format")]
 
     @field_validator("start_date", "end_date")
     @classmethod
@@ -75,65 +75,65 @@ class TimePeriod(BaseModel):
 class Agency(BaseModel):
     """Individual agency filter model"""
 
-    name: str
-    type: AgencyType = AgencyType.AWARDING
-    tier: AgencyTier = AgencyTier.TOPTIER
-
-    @classmethod
-    def parse_agency_string(cls, agency_str: str) -> "Agency":
-        """Parse single agency string in format 'type:tier:name' or variations"""
-        agency_str = agency_str.strip()
-
-        if ":" not in agency_str:
-            return cls(name=agency_str)
-
-        parts = agency_str.split(":")
-        if len(parts) == 2:
-            # Could be tier:name or type:name - assume tier:name for backward compatibility
-            tier, name = parts
-            return cls(tier=AgencyTier(tier), name=name)
-        elif len(parts) == 3:
-            type_val, tier, name = parts
-            return cls(type=AgencyType(type_val), tier=AgencyTier(tier), name=name)
-        else:
-            return cls(name=agency_str)
+    name: Annotated[
+        str,
+        Field(
+            description="Agency name, ex: 'Department of Defense' or Office of Inspector General"
+        ),
+    ]
+    type: Annotated[AgencyType, Field(default=AgencyType.AWARDING)] = AgencyType.AWARDING
+    tier: Annotated[AgencyTier, Field(default=AgencyTier.TOPTIER)] = AgencyTier.TOPTIER
+    top_tier_name: Annotated[
+        str | None, Field(description="Top tier agency name, ex: 'Department of Defense'")
+    ] = None
 
 
 class BaseSearchFilters(BaseModel):
     """Base filters for search requests"""
 
-    time_period: List[TimePeriod]
-    award_type_codes: Optional[List[AwardTypeCode]] = None
-    agencies: Optional[List[Agency]] = None
-    recipient_search_text: Optional[List[str]] = None
+    time_period: Annotated[
+        list[TimePeriod], Field(description="List of time periods for the search")
+    ]
+    award_type_codes: Annotated[
+        list[AwardTypeCode] | None, Field(description="List of award type codes")
+    ] = [
+        AwardTypeCode.BPA_CALL,
+        AwardTypeCode.PURCHASE_ORDER,
+        AwardTypeCode.DELIVERY_ORDER,
+        AwardTypeCode.DEFINITIVE_CONTRACT,
+    ]
+    agencies: Annotated[list[Agency] | None, Field(description="List of agencies")] = None
+    recipient_search_text: Annotated[
+        list[str] | None, Field(description="Recipient search text, ex: ['Amazon']")
+    ] = None
 
 
 class BasePagination(BaseModel):
     """Base pagination parameters"""
 
-    page: int = Field(default=1, ge=1, description="Page number")
-    limit: int = Field(default=100, ge=1, le=100, description="Results per page")
+    page: Annotated[int, Field(default=1, ge=1, description="Page number")]
+    limit: Annotated[int, Field(default=100, ge=1, le=100, description="Results per page")]
     order: SortOrder = SortOrder.DESC
 
 
 class BaseSearchRequest(BaseModel):
     """Base search request with common parameters"""
 
-    subawards: bool = False
-    pagination: BasePagination = Field(default_factory=lambda: BasePagination())
-
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(extra="allow")
+    subawards: Annotated[
+        bool, Field(default=False, description="Include subawards in the search")
+    ] = False
+    pagination: Annotated[BasePagination, Field(description="Pagination")] = BasePagination(
+        page=1, limit=100
+    )
 
 
 class AgencyListParams(BaseModel):
     """Parameters for agency list requests"""
 
-    fiscal_year: Optional[str] = None
-    sort: Optional[str] = None
-    page: Optional[str] = "1"
-    limit: Optional[str] = "100"
-
-    def to_params_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for API params, excluding None values"""
-        return {k: v for k, v in self.model_dump().items() if v is not None}
+    fiscal_year: Annotated[int | None, Field(description="Fiscal year, ex: 2022")] = None
+    sort: Annotated[
+        str | None, Field(description="Value to sort on, default to 'total_obligations'")
+    ] = None
+    page: Annotated[int | None, Field(description="Page number")] = 1
+    limit: Annotated[int | None, Field(description="Results per page")] = 100
