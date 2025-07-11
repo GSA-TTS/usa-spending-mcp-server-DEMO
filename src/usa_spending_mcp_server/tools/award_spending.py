@@ -1,9 +1,12 @@
+import logging
 from typing import Any
 
 from fastmcp import FastMCP
 
 from usa_spending_mcp_server.client import USASpendingClient
 from usa_spending_mcp_server.models.award_spending_models import AwardSearchRequest
+
+logger = logging.getLogger(__name__)
 
 
 def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
@@ -12,8 +15,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
     @mcp.tool()
     async def search_spending_by_award(
         award_search_request: AwardSearchRequest,
-        fetch_all_pages: bool = True,
-        max_pages: int = 3,
+        pages_to_fetch: int = 3,
     ) -> Any:
         """
         Search USA government spending data by award with filtering capabilities.
@@ -35,8 +37,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                 - pagination: BasePagination with page, limit, order (asc/desc)
                 - sort: Sort field name
                 - subawards: Include subaward data (default: False)
-            fetch_all_pages: Whether to fetch all available pages (default: True)
-            max_pages: Maximum number of pages to fetch when fetch_all_pages=True (default: 3)
+            pages_to_fetch: Maximum number of pages to fetch (default: 3)
 
         Returns:
             Raw API response data as JSON string containing:
@@ -62,9 +63,10 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             response = await client.post(
                 "search/spending_by_award/", award_search_request.model_dump(exclude_none=True)
             )
+            logger.info(response)
 
             # If not fetching all pages, return first page
-            if not fetch_all_pages:
+            if pages_to_fetch <= 1:
                 return response
 
             # Initialize collection
@@ -75,15 +77,11 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             # Get pagination metadata
             page_metadata = response.get("page_metadata", {})
             has_next = page_metadata.get("hasNext", False)
-            total_pages = (
-                page_metadata.get("total", 0) // award_search_request.pagination.limit + 1
-            )
-
-            # Calculate actual max pages to fetch
-            max_pages_to_fetch = min(max_pages, total_pages) if total_pages > 0 else max_pages
+            logger.info("Page metadata: %s", page_metadata)
+            logger.info(f"Has next page: {has_next}")
 
             # Continue fetching while there are more pages and under limit
-            while has_next and pages_fetched < max_pages_to_fetch:
+            while has_next and pages_fetched < pages_to_fetch:
                 current_page += 1
                 pages_fetched += 1
 
@@ -111,7 +109,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
                 except Exception as e:
                     # Log error but don't fail completely - return what we have
-                    print(f"Error fetching page {current_page}: {str(e)}")
+                    logger.error(f"Error fetching page {current_page}: {str(e)}")
                     break
 
             # Build final response with enhanced metadata
@@ -121,9 +119,9 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                 {
                     "total_results_fetched": len(all_results),
                     "pages_fetched": pages_fetched,
-                    "requested_max_pages": max_pages,
+                    "requested_max_pages": pages_to_fetch,
                     "has_more_pages": has_next,
-                    "fetch_completed": not has_next or pages_fetched >= max_pages_to_fetch,
+                    "fetch_completed": not has_next or pages_fetched >= pages_to_fetch,
                 }
             )
 
