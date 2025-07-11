@@ -75,46 +75,37 @@ class TimePeriod(BaseModel):
 class Agency(BaseModel):
     """Individual agency filter model"""
 
-    name: str
-    type: AgencyType = AgencyType.AWARDING
-    tier: AgencyTier = AgencyTier.TOPTIER
-    top_tier_name: str | None = None
-
-    @classmethod
-    def parse_agency_string(cls, agency_str: str) -> "Agency":
-        """Parse single agency string in format 'type:tier:top_tier_name:name' or variations"""
-        agency_str = agency_str.strip()
-
-        if ":" not in agency_str:
-            return cls(name=agency_str)
-
-        parts = agency_str.split(":")
-        if len(parts) == 2:
-            # Must be type:name
-            type_val, name = parts
-            return cls(type=AgencyType(type_val), name=name)
-        elif len(parts) == 3:
-            tier, top_tier_name, name = parts
-            return cls(tier=AgencyTier(tier), top_tier_name=top_tier_name, name=name)
-        elif len(parts) == 4:
-            type_val, tier, top_tier_name, name = parts
-            return cls(
-                type=AgencyType(type_val),
-                tier=AgencyTier(tier),
-                top_tier_name=top_tier_name,
-                name=name,
-            )
-        else:
-            return cls(name=agency_str)
+    name: Annotated[
+        str,
+        Field(
+            description="Agency name, ex: 'Department of Defense' or Office of Inspector General"
+        ),
+    ]
+    type: Annotated[AgencyType, Field(default=AgencyType.AWARDING)] = AgencyType.AWARDING
+    tier: Annotated[AgencyTier, Field(default=AgencyTier.TOPTIER)] = AgencyTier.TOPTIER
+    top_tier_name: Annotated[
+        str | None, Field(description="Top tier agency name, ex: 'Department of Defense'")
+    ] = None
 
 
 class BaseSearchFilters(BaseModel):
     """Base filters for search requests"""
 
-    time_period: list[TimePeriod]
-    award_type_codes: list[AwardTypeCode] | None = None
-    agencies: list[Agency] | None = None
-    recipient_search_text: list[str] | None = None
+    time_period: Annotated[
+        list[TimePeriod], Field(description="List of time periods for the search")
+    ]
+    award_type_codes: Annotated[
+        list[AwardTypeCode] | None, Field(description="List of award type codes")
+    ] = [
+        AwardTypeCode.BPA_CALL,
+        AwardTypeCode.PURCHASE_ORDER,
+        AwardTypeCode.DELIVERY_ORDER,
+        AwardTypeCode.DEFINITIVE_CONTRACT,
+    ]
+    agencies: Annotated[list[Agency] | None, Field(description="List of agencies")] = None
+    recipient_search_text: Annotated[
+        list[str] | None, Field(description="Recipient search text, ex: ['Amazon']")
+    ] = None
 
 
 class BasePagination(BaseModel):
@@ -129,18 +120,20 @@ class BaseSearchRequest(BaseModel):
     """Base search request with common parameters"""
 
     model_config = ConfigDict(extra="allow")
-    subawards: bool = True
-    pagination: BasePagination = Field(default_factory=lambda: BasePagination(page=1, limit=100))
+    subawards: Annotated[
+        bool, Field(default=False, description="Include subawards in the search")
+    ] = False
+    pagination: Annotated[BasePagination, Field(description="Pagination")] = BasePagination(
+        page=1, limit=100
+    )
 
 
 class AgencyListParams(BaseModel):
     """Parameters for agency list requests"""
 
-    fiscal_year: str | None = None
-    sort: str | None = None
-    page: str | None = "1"
-    limit: str | None = "100"
-
-    def to_params_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for API params, excluding None values"""
-        return {k: v for k, v in self.model_dump().items() if v is not None}
+    fiscal_year: Annotated[int | None, Field(description="Fiscal year, ex: 2022")] = None
+    sort: Annotated[
+        str | None, Field(description="Value to sort on, default to 'total_obligations'")
+    ] = None
+    page: Annotated[int | None, Field(description="Page number")] = 1
+    limit: Annotated[int | None, Field(description="Results per page")] = 100

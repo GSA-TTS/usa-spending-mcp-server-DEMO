@@ -1,7 +1,8 @@
 import asyncio
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 from usa_spending_mcp_server.client import USASpendingClient
 from usa_spending_mcp_server.models.award_spending_models import AwardSearchRequest
@@ -12,23 +13,9 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def search_spending_by_award(
-        award_type_codes: str,
-        start_date: str = "2023-10-01",
-        end_date: str = "2024-09-30",
-        agencies: str | None = None,
-        recipients: str | None = None,
-        award_ids: str | None = None,
-        keywords: str | None = None,
-        award_amounts: str | None = None,
-        program_activities: str | None = None,
-        fields: str | None = None,
-        subawards: str = "False",
-        page: str = "1",
-        limit: str = "100",
-        sort: str | None = None,
-        order: str = "desc",
-        fetch_all_pages: str = "True",
-        max_pages: str = "3",
+        award_search_request: AwardSearchRequest,
+        fetch_all_pages: bool = True,
+        max_pages: int = 3,
     ) -> Any:
         """
         Search USA government spending data by award with filtering capabilities.
@@ -75,66 +62,34 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         """
 
         try:
-            request = AwardSearchRequest.from_params(
-                award_type_codes=award_type_codes,
-                start_date=start_date,
-                end_date=end_date,
-                agencies=agencies,
-                recipients=recipients,
-                award_ids=award_ids,
-                keywords=keywords,
-                award_amounts=award_amounts,
-                program_activities=program_activities,
-                fields=fields,
-                subawards=subawards,
-                page=page,
-                limit=limit,
-                sort=sort,
-                order=order,
+            # Make initial API call
+            response = await client.post(
+                "search/spending_by_award/", award_search_request.model_dump(exclude_none=True)
             )
 
-            # Make initial API call
-            response = await client.post("search/spending_by_award/", request.to_api_payload())
-
             # If not fetching all pages, return first page
-            if fetch_all_pages.lower() != "true":
+            if not fetch_all_pages:
                 return response
 
             # Collect all results across pages
             all_results = response.get("results", [])
-            current_page = int(page)
-            max_pages_int = int(max_pages)
+            current_page = award_search_request.pagination.page or 1
 
             # Continue fetching while there are more pages
             while (
                 response.get("page_metadata", {}).get("hasNext", False)
-                and current_page < max_pages_int
+                and current_page < max_pages
             ):
 
                 current_page += 1
 
                 # Update request for next page
-                next_request = AwardSearchRequest.from_params(
-                    award_type_codes=award_type_codes,
-                    start_date=start_date,
-                    end_date=end_date,
-                    agencies=agencies,
-                    recipients=recipients,
-                    award_ids=award_ids,
-                    keywords=keywords,
-                    award_amounts=award_amounts,
-                    program_activities=program_activities,
-                    fields=fields,
-                    subawards=subawards,
-                    page=str(current_page),
-                    limit=limit,
-                    sort=sort,
-                    order=order,
-                )
+                next_request = award_search_request.model_copy(deep=True)
+                next_request.pagination.page = current_page
 
                 # Fetch next page
                 next_response = await client.post(
-                    "search/spending_by_award/", next_request.to_api_payload()
+                    "search/spending_by_award/", next_request.model_dump(exclude_none=True)
                 )
 
                 # Append results
@@ -156,8 +111,12 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def get_award_details(
-        award_id: str,
-        max_concurrent: int = 10,
+        award_ids: Annotated[
+            list[str], Field(description="List of award IDs", min_length=1, max_length=10)
+        ],
+        max_concurrent: Annotated[
+            int, Field(default=10, description="Maximum number of concurrent requests")
+        ] = 10,
     ) -> Any:
         """
         Get detailed information about specific government award(s).
@@ -166,14 +125,13 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         or other awards including amounts, dates, recipients, agencies, and transaction history.
 
         Args:
-            award_id: Single award ID or comma-separated list of award IDs
-                - Single: 'CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-'
-                - Multiple: 'CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
-                    CONT_AWD_W91ZRS23C0001_9702_-NONE-_-NONE-'
+            award_ids: List of award IDs
+                - Single: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-']
+                - Multiple: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-',
+                    'CONT_AWD_W91ZRS23C0001_9702_-NONE-_-NONE-']
                 - Contract IDs typically start with letters followed by numbers
                 - Grant IDs vary by agency
                 - Can be found using search_spending_by_award (generated_internal_id field) tool
-                - Maximum 10 awards when using comma-separated list
             max_concurrent: Maximum number of concurrent requests (default: 10, max: 10)
 
         Returns:
@@ -191,32 +149,15 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
         Examples:
             - Single contract:
-                get_award_details(award_id='CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-')
+                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-'])
             - Multiple contracts:
-                get_award_details(award_id='CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
-                    CONT_AWD_W91ZRS23C0001_9701_-NONE-_-NONE-')
-            - Custom concurrency:
-                get_award_details(award_id='CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
-                    CONT_AWD_W91ZRS23C0001_9702_-NONE-_-NONE-', max_concurrent=5)
+                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
+                    CONT_AWD_W91ZRS23C0001_9701_-NONE-_-NONE-'])
         """
 
         try:
-            # Parse comma-separated award IDs
-            award_ids = [aid.strip() for aid in award_id.split(",") if aid.strip()]
-
             if not award_ids:
                 return "Error: No valid award IDs provided"
-
-            # Handle single award ID - simple case
-            if len(award_ids) == 1:
-                try:
-                    return await client.get(f"awards/{award_ids[0]}/")
-                except Exception as e:
-                    return f"Error getting award details for {award_ids[0]}: {str(e)}"
-
-            # Handle multiple award IDs
-            if len(award_ids) > 10:
-                return "Error: Maximum 10 awards allowed per request"
 
             # Limit concurrent requests
             max_concurrent = min(max_concurrent, 10, len(award_ids))
