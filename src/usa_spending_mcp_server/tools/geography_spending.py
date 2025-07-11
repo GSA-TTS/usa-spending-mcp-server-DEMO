@@ -13,19 +13,7 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def search_spending_by_geography(
-        scope: str,
-        geo_layer: str,
-        geo_layer_filters: str,
-        award_types: str | None = None,
-        agencies: str | None = None,
-        recipients: str | None = None,
-        start_date: str = "2023-10-01",
-        end_date: str = "2024-09-30",
-        subawards: str = "False",
-        page: str = "1",
-        limit: str = "100",
-        sort: str = "aggregated_amount",
-        order: str = "desc",
+        geography_search_request: GeographySearchRequest,
     ) -> Any:
         """
         Search USA government spending data by geographic location.
@@ -63,25 +51,11 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
         """
 
         try:
-            # Build the request payload
-            request = GeographySearchRequest.from_params(
-                scope=scope,
-                geo_layer=geo_layer,
-                geo_layer_filters=geo_layer_filters,
-                award_types=award_types,
-                start_date=start_date,
-                end_date=end_date,
-                agencies=agencies,
-                recipients=recipients,
-                subawards=subawards,
-                page=page,
-                limit=limit,
-                sort=sort,
-                order=order,
-            )
-
             # Make API call
-            response = await client.post("search/spending_by_geography/", request.to_api_payload())
+            response = await client.post(
+                "search/spending_by_geography/",
+                geography_search_request.model_dump(exclude_none=True),
+            )
 
             # Return raw API response
             return response

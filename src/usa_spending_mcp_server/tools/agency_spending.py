@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 from usa_spending_mcp_server.client import USASpendingClient
 from usa_spending_mcp_server.models.common_models import AgencyListParams
@@ -11,11 +12,10 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def get_sub_agency_list(
-        toptier_code: str,
-        fiscal_year: str | None = None,
-        sort: str | None = None,
-        page: str | None = "1",
-        limit: str | None = "100",
+        toptier_code: Annotated[str, Field(description="The toptier code of the agency")],
+        agency_list_params: Annotated[
+            AgencyListParams, Field(description="Agency list parameters")
+        ],
     ) -> Any:
         """
         Given a toptier_code of an agency, this tool returns the list of subagencies and offices
@@ -33,12 +33,9 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing list of subagencies and offices
         """
         try:
-            agency_list_params = AgencyListParams(
-                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
-            ).to_params_dict()
-
             response = await client.get(
-                f"agency/{toptier_code}/sub_agency/", params=agency_list_params
+                f"agency/{toptier_code}/sub_agency/",
+                params=agency_list_params.model_dump(exclude_none=True),
             )
             return response
 
@@ -47,11 +44,10 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def get_sub_components_list(
-        toptier_code: str,
-        fiscal_year: str | None = None,
-        sort: str | None = None,
-        page: str | None = "1",
-        limit: str | None = "100",
+        toptier_code: Annotated[str, Field(description="The toptier code of the agency")],
+        agency_list_params: Annotated[
+            AgencyListParams, Field(description="Agency list parameters")
+        ],
     ) -> Any:
         """
         Get list of all sub-components for a given agency based on toptier_code.
@@ -69,12 +65,9 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing list of sub-components
         """
         try:
-            agency_list_params = AgencyListParams(
-                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
-            ).to_params_dict()
-
             response = await client.get(
-                f"agency/{toptier_code}/sub_components/", params=agency_list_params
+                f"agency/{toptier_code}/sub_components/",
+                params=agency_list_params.model_dump(exclude_none=True),
             )
             return response
 
@@ -83,12 +76,11 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def get_sub_component_details(
-        toptier_code: str,
-        bureau_slug: str,
-        fiscal_year: str | None = None,
-        sort: str | None = None,
-        page: str | None = "1",
-        limit: str | None = "100",
+        toptier_code: Annotated[str, Field(description="The toptier code of the agency")],
+        bureau_slug: Annotated[str, Field(description="The slug of the sub-component")],
+        agency_list_params: Annotated[
+            AgencyListParams, Field(description="Agency list parameters")
+        ],
     ) -> Any:
         """
         Get detailed information about a specific sub-component within an agency.
@@ -107,13 +99,9 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
             Raw API response data as JSON string containing detailed sub-component information
         """
         try:
-            agency_list_params = AgencyListParams(
-                fiscal_year=fiscal_year, sort=sort, page=page, limit=limit
-            ).to_params_dict()
-
             response = await client.get(
                 f"agency/{toptier_code}/sub_components/{bureau_slug}/",
-                params=agency_list_params,
+                params=agency_list_params.model_dump(exclude_none=True),
             )
             return response
 
