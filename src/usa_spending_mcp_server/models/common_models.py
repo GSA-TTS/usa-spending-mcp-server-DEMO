@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import field_validator, model_validator
 
 
@@ -51,8 +51,8 @@ class SortOrder(str, Enum):
 class TimePeriod(BaseModel):
     """Time period filter"""
 
-    start_date: str = Field(..., description="Start date in YYYY-MM-DD format")
-    end_date: str = Field(..., description="End date in YYYY-MM-DD format")
+    start_date: Annotated[str, Field(description="Start date in YYYY-MM-DD format")]
+    end_date: Annotated[str, Field(description="End date in YYYY-MM-DD format")]
 
     @field_validator("start_date", "end_date")
     @classmethod
@@ -78,10 +78,11 @@ class Agency(BaseModel):
     name: str
     type: AgencyType = AgencyType.AWARDING
     tier: AgencyTier = AgencyTier.TOPTIER
+    top_tier_name: str | None = None
 
     @classmethod
     def parse_agency_string(cls, agency_str: str) -> "Agency":
-        """Parse single agency string in format 'type:tier:name' or variations"""
+        """Parse single agency string in format 'type:tier:top_tier_name:name' or variations"""
         agency_str = agency_str.strip()
 
         if ":" not in agency_str:
@@ -89,12 +90,20 @@ class Agency(BaseModel):
 
         parts = agency_str.split(":")
         if len(parts) == 2:
-            # Could be tier:name or type:name - assume tier:name for backward compatibility
-            tier, name = parts
-            return cls(tier=AgencyTier(tier), name=name)
+            # Must be type:name
+            type_val, name = parts
+            return cls(type=AgencyType(type_val), name=name)
         elif len(parts) == 3:
-            type_val, tier, name = parts
-            return cls(type=AgencyType(type_val), tier=AgencyTier(tier), name=name)
+            tier, top_tier_name, name = parts
+            return cls(tier=AgencyTier(tier), top_tier_name=top_tier_name, name=name)
+        elif len(parts) == 4:
+            type_val, tier, top_tier_name, name = parts
+            return cls(
+                type=AgencyType(type_val),
+                tier=AgencyTier(tier),
+                top_tier_name=top_tier_name,
+                name=name,
+            )
         else:
             return cls(name=agency_str)
 
@@ -102,38 +111,36 @@ class Agency(BaseModel):
 class BaseSearchFilters(BaseModel):
     """Base filters for search requests"""
 
-    time_period: List[TimePeriod]
-    award_type_codes: Optional[List[AwardTypeCode]] = None
-    agencies: Optional[List[Agency]] = None
-    recipient_search_text: Optional[List[str]] = None
+    time_period: list[TimePeriod]
+    award_type_codes: list[AwardTypeCode] | None = None
+    agencies: list[Agency] | None = None
+    recipient_search_text: list[str] | None = None
 
 
 class BasePagination(BaseModel):
     """Base pagination parameters"""
 
-    page: int = Field(default=1, ge=1, description="Page number")
-    limit: int = Field(default=100, ge=1, le=100, description="Results per page")
+    page: Annotated[int, Field(default=1, ge=1, description="Page number")]
+    limit: Annotated[int, Field(default=100, ge=1, le=100, description="Results per page")]
     order: SortOrder = SortOrder.DESC
 
 
 class BaseSearchRequest(BaseModel):
     """Base search request with common parameters"""
 
-    subawards: bool = False
-    pagination: BasePagination = Field(default_factory=lambda: BasePagination())
-
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(extra="allow")
+    subawards: bool = True
+    pagination: BasePagination = Field(default_factory=lambda: BasePagination(page=1, limit=100))
 
 
 class AgencyListParams(BaseModel):
     """Parameters for agency list requests"""
 
-    fiscal_year: Optional[str] = None
-    sort: Optional[str] = None
-    page: Optional[str] = "1"
-    limit: Optional[str] = "100"
+    fiscal_year: str | None = None
+    sort: str | None = None
+    page: str | None = "1"
+    limit: str | None = "100"
 
-    def to_params_dict(self) -> Dict[str, Any]:
+    def to_params_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API params, excluding None values"""
         return {k: v for k, v in self.model_dump().items() if v is not None}

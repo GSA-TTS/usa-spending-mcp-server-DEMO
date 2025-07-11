@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import ValidationInfo, field_validator
 
@@ -41,14 +41,14 @@ class GeographySearchRequest(BaseSearchRequest):
 
     scope: GeographicScope
     geo_layer: GeographicLayer
-    geo_layer_filters: List[str]
+    geo_layer_filters: list[str]
     filters: GeographySearchFilters
     sort: str = "aggregated_amount"
     subawards: bool = False
 
     @field_validator("geo_layer_filters")
     @classmethod
-    def validate_geo_filters(cls, v: List[str], info: ValidationInfo) -> List[str]:
+    def validate_geo_filters(cls, v: list[str], info: ValidationInfo) -> list[str]:
         """Validate geographic filters based on geo_layer"""
         # Get geo_layer from the data being validated
         geo_layer = info.data.get("geo_layer")
@@ -59,18 +59,16 @@ class GeographySearchRequest(BaseSearchRequest):
             if geo_layer == GeographicLayer.STATE:
                 # States: 2-letter codes or 2-digit FIPS
                 if not (
-                    len(filter_code) == 2
-                    and (filter_code.isalpha() or filter_code.isdigit())
+                    len(filter_code) == 2 and (filter_code.isalpha() or filter_code.isdigit())
                 ):
                     raise ValueError(
-                        f"State codes must be 2-letter postal codes or 2-digit FIPS codes: {filter_code}"
+                        "State codes must be 2-letter postal codes or 2-digit FIPS codes: "
+                        f"{filter_code}"
                     )
             elif geo_layer == GeographicLayer.COUNTY:
                 # Counties: 5-digit FIPS codes
                 if not (len(filter_code) == 5 and filter_code.isdigit()):
-                    raise ValueError(
-                        f"County codes must be 5-digit FIPS codes: {filter_code}"
-                    )
+                    raise ValueError(f"County codes must be 5-digit FIPS codes: {filter_code}")
             elif geo_layer == GeographicLayer.ZIP:
                 # ZIP: 5-digit ZIP codes
                 if not (len(filter_code) == 5 and filter_code.isdigit()):
@@ -94,9 +92,9 @@ class GeographySearchRequest(BaseSearchRequest):
         scope: str,
         geo_layer: str,
         geo_layer_filters: str,
-        award_types: Optional[str] = None,
-        agencies: Optional[str] = None,
-        recipients: Optional[str] = None,
+        award_types: str | None = None,
+        agencies: str | None = None,
+        recipients: str | None = None,
         start_date: str = "2023-10-01",
         end_date: str = "2024-09-30",
         subawards: str = "false",
@@ -118,9 +116,7 @@ class GeographySearchRequest(BaseSearchRequest):
         # Parse award types
         award_type_list = None
         if award_types:
-            award_type_list = [
-                AwardTypeCode(code.strip()) for code in award_types.split(",")
-            ]
+            award_type_list = [AwardTypeCode(code.strip()) for code in award_types.split(",")]
 
         # Parse recipients
         recipient_list = None
@@ -141,9 +137,7 @@ class GeographySearchRequest(BaseSearchRequest):
         )
 
         # Create pagination
-        pagination = BasePagination(
-            page=page_int, limit=limit_int, order=SortOrder(order)
-        )
+        pagination = BasePagination(page=page_int, limit=limit_int, order=SortOrder(order))
 
         # Create instance
         instance = cls(
@@ -158,7 +152,7 @@ class GeographySearchRequest(BaseSearchRequest):
 
         return instance
 
-    def to_api_payload(self) -> Dict[str, Any]:
+    def to_api_payload(self) -> dict[str, Any]:
         """Convert to API payload format"""
 
         # Build filters dictionary
@@ -170,14 +164,12 @@ class GeographySearchRequest(BaseSearchRequest):
 
         # Add award_type_codes if present
         if self.filters.award_type_codes:
-            filters["award_type_codes"] = [
-                code.value for code in self.filters.award_type_codes
-            ]
+            filters["award_type_codes"] = [code.value for code in self.filters.award_type_codes]
 
         # Add agencies - use parsed agencies from MCP string parsing
         if self.filters.agencies:
             filters["agencies"] = [
-                agency.model_dump() for agency in self.filters.agencies
+                agency.model_dump(exclude_none=True) for agency in self.filters.agencies
             ]
 
         # Add recipient_search_text if present

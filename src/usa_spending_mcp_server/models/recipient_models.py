@@ -1,6 +1,4 @@
-from typing import Optional
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import field_validator
 
 from usa_spending_mcp_server.models.common_models import (
     BasePagination,
@@ -12,7 +10,7 @@ from usa_spending_mcp_server.models.common_models import (
 class RecipientSearchRequest(BaseSearchRequest):
     """Model for recipient search request"""
 
-    keyword: Optional[str] = None
+    keyword: str | None = None
     award_type: str = "all"
     sort: str = "amount"
     order: str = "desc"
@@ -51,7 +49,7 @@ class RecipientSearchRequest(BaseSearchRequest):
     @classmethod
     def from_params(
         cls,
-        keyword: Optional[str] = None,
+        keyword: str | None = None,
         award_type: str = "all",
         sort: str = "amount",
         order: str = "desc",
@@ -61,9 +59,7 @@ class RecipientSearchRequest(BaseSearchRequest):
         """Create request from string parameters"""
         page_int = int(page)
         limit_int = int(limit)
-        pagination = BasePagination(
-            page=page_int, limit=limit_int, order=SortOrder(order)
-        )
+        pagination = BasePagination(page=page_int, limit=limit_int, order=SortOrder(order))
 
         return cls(
             keyword=keyword,

@@ -31,8 +31,12 @@ class USASpendingClient:
         """Make a POST request to the API"""
         return await self._request("POST", endpoint, json=data)
 
-    async def get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make a GET request to the API"""
         return await self._request("GET", endpoint, params=params)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.client.aclose()

@@ -3,7 +3,7 @@ name = "usa-spending-mcp-server"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Samuel Levy",email = "heysamlevy@gmail.com"}
+    {name = "Samuel Levy",email = "sam.levy@gsa.gov"}
 ]
 readme = "README.md"
 requires-python = "^3.13"
@@ -23,15 +23,16 @@ usa-spending-mcp-server = "usa_spending_mcp_server.server:main"
 black = "^25.1.0"
 isort = "^6.0.1"
 pylint = "^3.3.7"
+flake8 = "^7.3.0"
 
 [tool.black]
-line-length = 88
+line-length = 99
 target-version = ['py313']
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 88
+line_length = 99
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

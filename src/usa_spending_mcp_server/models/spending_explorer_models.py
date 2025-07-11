@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Annotated, Any, Union
 
 from pydantic import BaseModel, Field
 from pydantic.functional_validators import field_validator
@@ -50,8 +50,8 @@ class Period(str, Enum):
 class GeneralFilter(BaseModel):
     """Filter for general spending explorer requests"""
 
-    fy: str = Field(..., description="Fiscal year")
-    quarter: Quarter = Field(..., description="Quarter (required for general explorer)")
+    fy: Annotated[str, Field(description="Fiscal year")]
+    quarter: Annotated[Quarter, Field(description="Quarter (required for general explorer)")]
 
     @field_validator("fy")
     @classmethod
@@ -71,16 +71,16 @@ class GeneralFilter(BaseModel):
 class DetailedFilter(BaseModel):
     """Filter for specific spending explorer requests"""
 
-    fy: str = Field(..., description="Fiscal year")
-    quarter: Optional[Quarter] = Field(None, description="Quarter")
-    period: Optional[Period] = Field(None, description="Period")
-    agency: Optional[str] = Field(None, description="Agency ID")
-    federal_account: Optional[str] = Field(None, description="Federal Account ID")
-    object_class: Optional[str] = Field(None, description="Object Class ID")
-    budget_function: Optional[str] = Field(None, description="Budget Function ID")
-    budget_subfunction: Optional[str] = Field(None, description="Budget Subfunction ID")
-    recipient: Optional[str] = Field(None, description="Recipient ID")
-    program_activity: Optional[str] = Field(None, description="Program Activity ID")
+    fy: Annotated[str, Field(description="Fiscal year")]
+    quarter: Annotated[Quarter | None, Field(None, description="Quarter")]
+    period: Annotated[Period | None, Field(None, description="Period")]
+    agency: Annotated[str | None, Field(None, description="Agency ID")]
+    federal_account: Annotated[str | None, Field(None, description="Federal Account ID")]
+    object_class: Annotated[str | None, Field(None, description="Object Class ID")]
+    budget_function: Annotated[str | None, Field(None, description="Budget Function ID")]
+    budget_subfunction: Annotated[str | None, Field(None, description="Budget Subfunction ID")]
+    recipient: Annotated[str | None, Field(None, description="Recipient ID")]
+    program_activity: Annotated[str | None, Field(None, description="Program Activity ID")]
 
     @field_validator("fy")
     @classmethod
@@ -100,25 +100,23 @@ class DetailedFilter(BaseModel):
 class SpendingExplorerRequest(BaseModel):
     """Request model for spending explorer"""
 
-    type: ExplorerType = Field(..., description="Type of data grouping")
-    filters: Union[GeneralFilter, DetailedFilter] = Field(
-        ..., description="Filter criteria"
-    )
+    type: Annotated[ExplorerType, Field(description="Type of data grouping")]
+    filters: Annotated[Union[GeneralFilter, DetailedFilter], Field(description="Filter criteria")]
 
     @classmethod
     def from_params(
         cls,
         type: str,
         fiscal_year: str,
-        quarter: Optional[str] = None,
-        period: Optional[str] = None,
-        agency: Optional[str] = None,
-        federal_account: Optional[str] = None,
-        object_class: Optional[str] = None,
-        budget_function: Optional[str] = None,
-        budget_subfunction: Optional[str] = None,
-        recipient: Optional[str] = None,
-        program_activity: Optional[str] = None,
+        quarter: str | None = None,
+        period: str | None = None,
+        agency: str | None = None,
+        federal_account: str | None = None,
+        object_class: str | None = None,
+        budget_function: str | None = None,
+        budget_subfunction: str | None = None,
+        recipient: str | None = None,
+        program_activity: str | None = None,
     ) -> "SpendingExplorerRequest":
         """Create request from string parameters"""
 
@@ -140,7 +138,7 @@ class SpendingExplorerRequest(BaseModel):
             filters = GeneralFilter(fy=fiscal_year, quarter=Quarter(quarter))
         else:
             # Detailed explorer - convert string parameters to integers where applicable
-            filters_dict: Dict[str, Any] = {"fy": fiscal_year}
+            filters_dict: dict[str, Any] = {"fy": fiscal_year}
 
             if quarter:
                 filters_dict["quarter"] = Quarter(quarter)
@@ -165,7 +163,7 @@ class SpendingExplorerRequest(BaseModel):
 
         return cls(type=explorer_type, filters=filters)
 
-    def to_api_payload(self) -> Dict[str, Any]:
+    def to_api_payload(self) -> dict[str, Any]:
         """Convert to API payload format"""
 
         payload = {"type": self.type.value, "filters": {}}
@@ -192,9 +190,7 @@ class SpendingExplorerRequest(BaseModel):
             if self.filters.budget_function is not None:
                 payload["filters"]["budget_function"] = self.filters.budget_function
             if self.filters.budget_subfunction is not None:
-                payload["filters"][
-                    "budget_subfunction"
-                ] = self.filters.budget_subfunction
+                payload["filters"]["budget_subfunction"] = self.filters.budget_subfunction
             if self.filters.recipient is not None:
                 payload["filters"]["recipient"] = self.filters.recipient
             if self.filters.program_activity is not None:

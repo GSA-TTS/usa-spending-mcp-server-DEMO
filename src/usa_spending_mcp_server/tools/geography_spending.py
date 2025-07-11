@@ -1,5 +1,4 @@
-import json
-from typing import Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -17,9 +16,9 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
         scope: str,
         geo_layer: str,
         geo_layer_filters: str,
-        award_types: Optional[str] = None,
-        agencies: Optional[str] = None,
-        recipients: Optional[str] = None,
+        award_types: str | None = None,
+        agencies: str | None = None,
+        recipients: str | None = None,
         start_date: str = "2023-10-01",
         end_date: str = "2024-09-30",
         subawards: str = "False",
@@ -27,12 +26,13 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
         limit: str = "100",
         sort: str = "aggregated_amount",
         order: str = "desc",
-    ) -> str:
+    ) -> Any:
         """
         Search USA government spending data by geographic location.
 
         Args:
-            scope: Geographic scope - 'place_of_performance' (where work was performed) or 'recipient_location' (where recipient is located)
+            scope: Geographic scope - 'place_of_performance' (where work was performed) or
+                'recipient_location' (where recipient is located)
             geo_layer: Geographic aggregation level - 'state', 'county', 'district', or 'zip'
             geo_layer_filters: REQUIRED - Comma-separated list of geographic codes to filter by:
                 - For states: 2-letter postal codes (WA, CA) or 2-digit FIPS codes (53, 06)
@@ -42,9 +42,13 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
             award_types: Award type codes to filter by (e.g., 'A', 'B', 'C', 'D')
             agencies: Agency names to filter by. Format options:
                 - Just name: "Department of Defense" (defaults to awarding:toptier)
-                - tier:name: "toptier:Department of Defense"
-                - type:tier:name: "awarding:toptier:Department of Defense"
-                - Multiple agencies: "Department of Defense,Department of Health and Human Services"
+                - type:name: "awarding:Department of Defense"
+                - subtier:top_tier_name:name:
+                    "awarding:subtier:Department of Defense:Office of Inspector General"
+                - type:subtier:top_tier_name:name:
+                    "awarding:subtier:Department of Defense:Office of Inspector General"
+                - Multiple agencies:
+                    "Department of Defense,Department of Health and Human Services"
             recipients: Recipient names to search for (comma-separated)
             start_date: Start date in YYYY-MM-DD format (required)
             end_date: End date in YYYY-MM-DD format (required)
@@ -77,12 +81,10 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
             )
 
             # Make API call
-            response = await client.post(
-                "search/spending_by_geography/", request.to_api_payload()
-            )
+            response = await client.post("search/spending_by_geography/", request.to_api_payload())
 
             # Return raw API response
-            return json.dumps(response, indent=2)
+            return response
 
         except Exception as e:
             return f"Error searching spending by geography: {str(e)}"

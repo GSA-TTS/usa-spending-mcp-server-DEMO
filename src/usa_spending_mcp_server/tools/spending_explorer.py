@@ -1,5 +1,4 @@
-import json
-from typing import Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -16,16 +15,16 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
     async def search_spending_explorer(
         type: str,
         fiscal_year: str,
-        quarter: Optional[str] = None,
-        period: Optional[str] = None,
-        agency: Optional[str] = None,
-        federal_account: Optional[str] = None,
-        object_class: Optional[str] = None,
-        budget_function: Optional[str] = None,
-        budget_subfunction: Optional[str] = None,
-        recipient: Optional[str] = None,
-        program_activity: Optional[str] = None,
-    ) -> str:
+        quarter: str | None = None,
+        period: str | None = None,
+        agency: str | None = None,
+        federal_account: str | None = None,
+        object_class: str | None = None,
+        budget_function: str | None = None,
+        budget_subfunction: str | None = None,
+        recipient: str | None = None,
+        program_activity: str | None = None,
+    ) -> Any:
         """
         Search USA government spending data using the Spending Explorer endpoint.
 
@@ -67,7 +66,8 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
         Notes:
             - Data is not available prior to FY 2017 Q2
             - Data for latest complete quarter not available until 45 days after quarter close
-            - For general explorer, you must specify one of: budget_function, agency, or object_class
+            - For general explorer, you must specify one of: budget_function, agency,
+                or object_class
             - For specific explorer, you filter by combining multiple grouping fields
         """
 
@@ -90,7 +90,7 @@ def register_spending_explorer_tools(mcp: FastMCP, client: USASpendingClient):
             response = await client.post("spending/", request.to_api_payload())
 
             # Return raw API response
-            return json.dumps(response, indent=2)
+            return response
 
         except Exception as e:
             return f"Error searching spending explorer: {str(e)}"

@@ -1,5 +1,4 @@
-import json
-from typing import Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -12,15 +11,16 @@ def register_recipient_search_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def search_recipients(
-        keyword: Optional[str] = None,
+        keyword: str | None = None,
         award_type: str = "all",
         sort: str = "amount",
         order: str = "desc",
         page: str = "1",
         limit: str = "50",
-    ) -> str:
+    ) -> Any:
         """
-        Search for government spending recipients (contractors, grantees, etc).
+        Search for government spending recipients (contractors, grantees, etc) in the
+        last 12 months.
 
         This endpoint returns a list of recipients with their spending amounts,
         DUNS numbers, UEI identifiers, and recipient levels.
@@ -68,7 +68,7 @@ def register_recipient_search_tools(mcp: FastMCP, client: USASpendingClient):
             response = await client.post("recipient/", request.to_api_payload())
 
             # Return raw API response
-            return json.dumps(response, indent=2)
+            return response
 
         except Exception as e:
             return f"Error searching recipients: {str(e)}"
