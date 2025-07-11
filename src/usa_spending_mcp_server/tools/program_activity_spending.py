@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
 
@@ -10,13 +10,25 @@ def register_program_activity_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def list_program_activities(
-        toptier_code: str,
-        fiscal_year: str | None = None,
-        filter: str | None = None,
-        order: str | None = "desc",
-        sort: str | None = "obligated_amount",
-        page: str | None = "1",
-        limit: str | None = "100",
+        toptier_code: Annotated[int, "The toptier code of the agency (e.g., 086)"],
+        fiscal_year: Annotated[
+            str | None, "The fiscal year to query (optional; defaults to current FY)"
+        ] = None,
+        filter: Annotated[
+            str | None, "Filter program activities by name (e.g. IT Spending) (optional)"
+        ] = None,
+        order: Annotated[
+            str | None, "Sort direction: 'asc' or 'desc' (optional; default: 'desc')"
+        ] = "desc",
+        sort: Annotated[
+            str | None,
+            (
+                "Field to sort by: 'name', 'obligated_amount', or 'gross_outlay_amount'"
+                " (optional; default: 'obligated_amount')",
+            ),
+        ] = "obligated_amount",
+        page: Annotated[int | None, "Page number (optional; default: 1)"] = 1,
+        limit: Annotated[int | None, "Number of results per page (optional; default: 100)"] = 100,
     ) -> Any:
         """
         List program activities for a specific agency and fiscal year.

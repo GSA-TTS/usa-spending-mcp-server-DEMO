@@ -1,19 +1,19 @@
-from pydantic import field_validator
+from typing import Annotated
+
+from pydantic import Field, field_validator
 
 from usa_spending_mcp_server.models.common_models import (
-    BasePagination,
     BaseSearchRequest,
-    SortOrder,
 )
 
 
 class RecipientSearchRequest(BaseSearchRequest):
     """Model for recipient search request"""
 
-    keyword: str | None = None
-    award_type: str = "all"
-    sort: str = "amount"
-    order: str = "desc"
+    keyword: Annotated[str | None, Field(description="Search keyword")] = None
+    award_type: Annotated[str, Field(description="Filter by award type (default: 'all')")] = "all"
+    sort: Annotated[str, Field(description="Field to sort by (default: 'amount')")] = "amount"
+    order: Annotated[str, Field(description="Sort direction (default: 'desc')")] = "desc"
 
     @field_validator("award_type")
     @classmethod
@@ -45,42 +45,3 @@ class RecipientSearchRequest(BaseSearchRequest):
         if v not in valid_orders:
             raise ValueError(f"order must be one of {valid_orders}")
         return v
-
-    @classmethod
-    def from_params(
-        cls,
-        keyword: str | None = None,
-        award_type: str = "all",
-        sort: str = "amount",
-        order: str = "desc",
-        page: str = "1",
-        limit: str = "100",
-    ) -> "RecipientSearchRequest":
-        """Create request from string parameters"""
-        page_int = int(page)
-        limit_int = int(limit)
-        pagination = BasePagination(page=page_int, limit=limit_int, order=SortOrder(order))
-
-        return cls(
-            keyword=keyword,
-            award_type=award_type,
-            sort=sort,
-            order=order,
-            pagination=pagination,
-        )
-
-    def to_api_payload(self) -> dict:
-        """Convert to API request payload"""
-        payload = {
-            "award_type": self.award_type,
-            "sort": self.sort,
-            "order": self.order,
-            "page": self.pagination.page,
-            "limit": self.pagination.limit,
-        }
-
-        # Only include keyword if provided
-        if self.keyword:
-            payload["keyword"] = self.keyword
-
-        return payload
