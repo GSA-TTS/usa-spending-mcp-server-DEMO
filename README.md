@@ -1,13 +1,23 @@
 # USA Spending MCP Server
 
+⚠️ **DISCLAIMER: This is a proof of concept and is not intended for production use.**
+
 A simple MCP server for interacting with the USAspending.gov API.
 
 ## Requirements
 
 - Python 3.13+
-- [Poetry](https://python-poetry.org/)
+- [Poetry](https://python-poetry.org/) OR [uv](https://docs.astral.sh/uv/)
 
-## Setup
+## Installation Options
+
+### Option 1: Install via uv (Recommended for quick setup)
+
+```sh
+uv tool install git+https://github.com/GSA-TTS/arc-usa-spending-mcp-server
+```
+
+### Option 2: Development Setup with Poetry
 
 1. **Install dependencies:**
 
@@ -22,13 +32,35 @@ A simple MCP server for interacting with the USAspending.gov API.
    ```
 
 ## Simple way to connect to Claude 
-1. Get path 
+
+### For uv installation:
+1. Get the installed tool path:
+   ```sh
+   which usa-spending-mcp-server
+   ```
+
+2. Copy the path into Claude MCP config:
+   ```json
+   {
+     "mcpServers": {
+       "usa-spending": {
+         "command": "/path/to/usa-spending-mcp-server",
+         "args": [],
+         "env": {}
+       }
+     }
+   }
+   ```
+
+### For Poetry development setup:
+1. Get path:
    ```sh
    ➜  usa-spending-mcp-server git:(feature/award_spending) poetry run which usa-spending-mcp-server
    /Users/samuellevy/Library/Caches/pypoetry/virtualenvs/usa-spending-mcp-server-4uFFGwlz-py3.13/bin/usa-spending-mcp-server
    ```
-2. Copy path into Claude MCP config
-   ```
+
+2. Copy path into Claude MCP config:
+   ```json
    {
      "mcpServers": {
        "usa-spending": {
@@ -39,12 +71,20 @@ A simple MCP server for interacting with the USAspending.gov API.
      }
    }
    ```
-3. Anytime you need to update mcp server rerun
+
+3. Anytime you need to update mcp server rerun:
    ```sh
    poetry install
    ```  
+
 ## Running the Server
 
+### With uv:
+```sh
+usa-spending-mcp-server
+```
+
+### With Poetry:
 ```sh
 poetry run usa-spending-mcp-server
 ```
