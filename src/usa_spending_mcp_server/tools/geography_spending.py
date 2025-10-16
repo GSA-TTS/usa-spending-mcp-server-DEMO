@@ -38,6 +38,9 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                     - agencies: List of Agency objects with name, type
                         (awarding/funding), tier (toptier/subtier)
                     - recipient_search_text: List of recipient names to search for
+                    - recipient_type_names: List of recipient type names to filter by
+                        (e.g., 'category_business', 'sole_proprietorship', 'nonprofit',
+                        'community_development_corporations', 'tribally_owned_firm')
                 - pagination: BasePagination with page, limit, order (asc/desc)
                 - sort: Sort field (default: 'aggregated_amount')
                 - subawards: Include subaward data (default: False)
@@ -73,6 +76,16 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                     geo_layer_filters=["98101", "90210"],
                     filters=GeographySearchFilters(time_period=
                         [TimePeriod(start_date="2024-01-01", end_date="2024-12-31")])
+                )
+            - Search for nonprofit recipients in California:
+                GeographySearchRequest(
+                    scope="recipient_location",
+                    geo_layer="state",
+                    geo_layer_filters=["CA"],
+                    filters=GeographySearchFilters(
+                        time_period=[TimePeriod(start_date="2024-01-01", end_date="2024-12-31")],
+                        recipient_type_names=["nonprofit"]
+                    )
                 )
         """
 

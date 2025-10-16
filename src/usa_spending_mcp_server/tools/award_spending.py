@@ -1,7 +1,9 @@
+import asyncio
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 from usa_spending_mcp_server.client import USASpendingClient
 from usa_spending_mcp_server.models.award_spending_models import AwardSearchRequest
@@ -33,6 +35,9 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                     - keywords: List of keywords to search in award descriptions
                     - award_amounts: List of AwardAmount objects with lower_bound/upper_bound
                     - program_activities: List of ProgramActivityObject with name/code
+                    - recipient_type_names: List of recipient type names to filter by
+                        (e.g., 'category_business', 'sole_proprietorship', 'nonprofit',
+                        'community_development_corporations', 'tribally_owned_firm')
                 - fields: List of field names to include in response (default: basic award fields)
                 - pagination: BasePagination with page, limit, order (asc/desc)
                 - sort: Sort field name
@@ -46,9 +51,16 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                 and pages_fetched
 
         Examples:
-            - Search DOD contracts over $1M in FY2024:
+            - Search DOD OIG contracts over $1M in FY2024:
                 AwardSearchRequest with filters containing
-                    agencies=[Agency(name="Department of Defense")],
+                    agencies=[
+                        Agency(
+                            name="Office of the Inspector General",
+                            toptier_name="Department of Defense",
+                            type=AgencyType.AWARDING,
+                            tier=AgencyTier.TOPTIER
+                        )
+                    ],
                 award_amounts=[AwardAmount(lower_bound=1000000)],
                     time_period=[TimePeriod(start_date="2023-10-01", end_date="2024-09-30")]
             - Search by keywords:
@@ -57,7 +69,13 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             - Search specific award IDs:
                 AwardSearchRequest with filters containing
                     award_ids=["CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-"]
+            - Search for nonprofit grant recipients:
+                AwardSearchRequest with filters containing
+                    award_type_codes=["02", "03", "04", "05"],
+                    recipient_type_names=["nonprofit"],
+                    time_period=[TimePeriod(start_date="2024-01-01", end_date="2024-12-31")]
         """
+
         try:
             # Make initial API call
             response = await client.post(
@@ -129,3 +147,93 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
         except Exception as e:
             return f"Error searching spending by award: {str(e)}"
+
+    @mcp.tool()
+    async def get_award_details(
+        award_ids: Annotated[
+            list[str], Field(description="List of award IDs", min_length=1, max_length=10)
+        ],
+        max_concurrent: Annotated[
+            int, Field(default=10, description="Maximum number of concurrent requests")
+        ] = 10,
+    ) -> Any:
+        """
+        Get detailed information about specific government award(s).
+
+        This endpoint provides comprehensive details about one or more contracts, grants, loans,
+        or other awards including amounts, dates, recipients, agencies, and transaction history.
+
+        Args:
+            award_ids: List of award IDs
+                - Single: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-']
+                - Multiple: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-',
+                    'CONT_AWD_W91ZRS23C0001_9702_-NONE-_-NONE-']
+                - Contract IDs typically start with letters followed by numbers
+                - Grant IDs vary by agency
+                - Can be found using search_spending_by_award (generated_internal_id field) tool
+            max_concurrent: Maximum number of concurrent requests (default: 10, max: 10)
+
+        Returns:
+            Raw API response data as JSON string containing:
+            - For single award: Award details object
+            - For multiple awards: Dictionary with award_id as key and details as value
+            - Award overview (total obligation, dates, type)
+            - Recipient details (name, address, DUNS/UEI)
+            - Agency information (awarding and funding agencies)
+            - Place of performance
+            - Transaction history
+            - Contract details (if applicable)
+            - Federal account funding
+            - Executive compensation (if disclosed)
+
+        Examples:
+            - Single contract:
+                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-'])
+            - Multiple contracts:
+                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
+                    CONT_AWD_W91ZRS23C0001_9701_-NONE-_-NONE-'])
+        """
+
+        try:
+            if not award_ids:
+                return "Error: No valid award IDs provided"
+
+            # Limit concurrent requests
+            max_concurrent = min(max_concurrent, 10, len(award_ids))
+            semaphore = asyncio.Semaphore(max_concurrent)
+
+            # Simple parallel fetch function
+            async def fetch_award(aid: str) -> dict[str, Any]:
+                async with semaphore:
+                    try:
+                        data = await client.get(f"awards/{aid}/")
+                        return {"award_id": aid, "success": True, "data": data}
+                    except Exception as e:
+                        return {"award_id": aid, "success": False, "error": str(e)}
+
+            # Execute all requests concurrently
+            results = await asyncio.gather(*[fetch_award(aid) for aid in award_ids])
+
+            # Build response
+            success_results = {}
+            error_results = {}
+
+            for result in results:
+                if result["success"]:
+                    success_results[result["award_id"]] = result["data"]
+                else:
+                    error_results[result["award_id"]] = result["error"]
+
+            response = {
+                "success_count": len(success_results),
+                "error_count": len(error_results),
+                "results": success_results,
+            }
+
+            if error_results:
+                response["errors"] = error_results
+
+            return response
+
+        except Exception as e:
+            return f"Error processing award details request: {str(e)}"
