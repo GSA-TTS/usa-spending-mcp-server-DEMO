@@ -78,12 +78,12 @@ class Agency(BaseModel):
     name: Annotated[
         str,
         Field(
-            description="Agency name, ex: 'Department of Defense' or Office of Inspector General"
+            description="Agency name, ex: 'Department of Defense' or Office of the Inspector General"
         ),
     ]
     type: Annotated[AgencyType, Field(default=AgencyType.AWARDING)] = AgencyType.AWARDING
     tier: Annotated[AgencyTier, Field(default=AgencyTier.TOPTIER)] = AgencyTier.TOPTIER
-    top_tier_name: Annotated[
+    toptier_name: Annotated[
         str | None, Field(description="Top tier agency name, ex: 'Department of Defense'")
     ] = None
 
@@ -96,15 +96,16 @@ class BaseSearchFilters(BaseModel):
     ]
     award_type_codes: Annotated[
         list[AwardTypeCode] | None, Field(description="List of award type codes")
-    ] = [
-        AwardTypeCode.BPA_CALL,
-        AwardTypeCode.PURCHASE_ORDER,
-        AwardTypeCode.DELIVERY_ORDER,
-        AwardTypeCode.DEFINITIVE_CONTRACT,
-    ]
+    ] = None
     agencies: Annotated[list[Agency] | None, Field(description="List of agencies")] = None
     recipient_search_text: Annotated[
         list[str] | None, Field(description="Recipient search text, ex: ['Amazon']")
+    ] = None
+    recipient_type_names: Annotated[
+        list[str] | None,
+        Field(
+            description="Recipient type names, ex: ['category_business', 'sole_proprietorship', 'nonprofit', 'community_development_corporations']"
+        ),
     ] = None
 
 

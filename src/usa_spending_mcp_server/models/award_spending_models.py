@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 from usa_spending_mcp_server.models.common_models import (
+    AwardTypeCode,
     BaseSearchFilters,
     BaseSearchRequest,
 )
@@ -40,6 +41,14 @@ class AwardSearchFilters(BaseSearchFilters):
     keywords: Annotated[
         list[str] | None, Field(description="List of keywords to search in award descriptions")
     ] = None
+    award_type_codes: Annotated[
+        list[AwardTypeCode] | None, Field(description="List of award type codes")
+    ] = [
+        AwardTypeCode.BPA_CALL,
+        AwardTypeCode.PURCHASE_ORDER,
+        AwardTypeCode.DELIVERY_ORDER,
+        AwardTypeCode.DEFINITIVE_CONTRACT
+    ]
     award_amounts: Annotated[
         list[AwardAmount] | None, Field(description="List of award amount ranges")
     ] = None
