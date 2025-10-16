@@ -148,7 +148,6 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         except Exception as e:
             return f"Error searching spending by award: {str(e)}"
 
-
     @mcp.tool()
     async def get_award_details(
         award_ids: Annotated[

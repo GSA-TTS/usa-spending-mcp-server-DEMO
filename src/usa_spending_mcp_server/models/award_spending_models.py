@@ -47,7 +47,7 @@ class AwardSearchFilters(BaseSearchFilters):
         AwardTypeCode.BPA_CALL,
         AwardTypeCode.PURCHASE_ORDER,
         AwardTypeCode.DELIVERY_ORDER,
-        AwardTypeCode.DEFINITIVE_CONTRACT
+        AwardTypeCode.DEFINITIVE_CONTRACT,
     ]
     award_amounts: Annotated[
         list[AwardAmount] | None, Field(description="List of award amount ranges")
