@@ -1,0 +1,8 @@
+# Requirements for cloud.gov deployment
+# Generated from pyproject.toml dependencies
+
+fastmcp>=2.9.2,<3.0.0
+httpx>=0.28.1,<0.29.0
+mcp>=1.11.0,<2.0.0
+uvicorn>=0.30.0
+starlette>=0.38.0
