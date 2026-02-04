@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -13,7 +13,7 @@ class USASpendingClient:
             timeout=timeout, headers={"Content-Type": "application/json"}
         )
 
-    async def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+    async def _request(self, method: str, endpoint: str, **kwargs) -> dict[str, Any]:
         """Make HTTP request with unified error handling"""
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
 
@@ -27,11 +27,11 @@ class USASpendingClient:
         except httpx.RequestError as e:
             raise Exception(f"Request error: {str(e)}") from e
 
-    async def post(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
         """Make a POST request to the API"""
         return await self._request("POST", endpoint, json=data)
 
-    async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make a GET request to the API"""
         return await self._request("GET", endpoint, params=params)
 

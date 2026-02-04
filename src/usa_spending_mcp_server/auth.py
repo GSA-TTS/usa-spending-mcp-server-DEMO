@@ -51,7 +51,7 @@ Usage:
 import logging
 import os
 import secrets
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from fastmcp.server.auth import AccessToken, TokenVerifier
@@ -60,12 +60,8 @@ from fastmcp.server.auth.oidc_proxy import OIDCProxy
 logger = logging.getLogger(__name__)
 
 # login.gov OIDC configuration URLs
-LOGINGOV_SANDBOX_CONFIG_URL = (
-    "https://idp.int.identitysandbox.gov/.well-known/openid-configuration"
-)
-LOGINGOV_PRODUCTION_CONFIG_URL = (
-    "https://secure.login.gov/.well-known/openid-configuration"
-)
+LOGINGOV_SANDBOX_CONFIG_URL = "https://idp.int.identitysandbox.gov/.well-known/openid-configuration"
+LOGINGOV_PRODUCTION_CONFIG_URL = "https://secure.login.gov/.well-known/openid-configuration"
 
 
 def _require_auth_env() -> bool:
@@ -87,7 +83,7 @@ class LoginGovTokenVerifier(TokenVerifier):
         self.timeout_seconds = timeout_seconds
         self.logger = logging.getLogger(__name__)
 
-    async def verify_token(self, token: str) -> Optional[AccessToken]:
+    async def verify_token(self, token: str) -> AccessToken | None:
         """Verify token by calling the login.gov userinfo endpoint."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -100,9 +96,7 @@ class LoginGovTokenVerifier(TokenVerifier):
                 )
 
             if response.status_code != 200:
-                self.logger.debug(
-                    "Userinfo validation failed: HTTP %d", response.status_code
-                )
+                self.logger.debug("Userinfo validation failed: HTTP %d", response.status_code)
                 return None
 
             userinfo = response.json()
@@ -141,9 +135,7 @@ class LoginGovOIDCProxy(OIDCProxy):
     authorization request. This subclass injects a compliant nonce.
     """
 
-    def _build_upstream_authorize_url(
-        self, txn_id: str, transaction: dict[str, Any]
-    ) -> str:
+    def _build_upstream_authorize_url(self, txn_id: str, transaction: dict[str, Any]) -> str:
         # Generate a nonce (minimum 22 chars per login.gov requirements)
         nonce = txn_id if len(txn_id) >= 22 else secrets.token_urlsafe(32)
 
@@ -167,25 +159,21 @@ def get_userinfo_url_from_config(config_url: str) -> str:
 
         userinfo_url = doc.get("userinfo_endpoint")
         if not userinfo_url:
-            raise RuntimeError(
-                "OIDC discovery document missing 'userinfo_endpoint'"
-            )
+            raise RuntimeError("OIDC discovery document missing 'userinfo_endpoint'")
 
         return userinfo_url
 
     except Exception:
-        logger.exception(
-            "Failed to fetch OIDC discovery document from %s", config_url
-        )
+        logger.exception("Failed to fetch OIDC discovery document from %s", config_url)
         raise
 
 
 def create_logingov_auth(
-    base_url: Optional[str] = None,
-    client_id: Optional[str] = None,
-    jwt_signing_key: Optional[str] = None,
-    config_url: Optional[str] = None,
-) -> Optional[LoginGovOIDCProxy]:
+    base_url: str | None = None,
+    client_id: str | None = None,
+    jwt_signing_key: str | None = None,
+    config_url: str | None = None,
+) -> LoginGovOIDCProxy | None:
     """
     Create a login.gov authentication provider for FastMCP.
 
@@ -201,21 +189,15 @@ def create_logingov_auth(
     base_url = base_url or os.getenv("BASE_URL")
     client_id = client_id or os.getenv("LOGINGOV_CLIENT_ID")
     jwt_signing_key = jwt_signing_key or os.getenv("JWT_SIGNING_KEY")
-    config_url = (
-        config_url
-        or os.getenv("LOGINGOV_CONFIG_URL")
-        or LOGINGOV_SANDBOX_CONFIG_URL
-    )
+    config_url = config_url or os.getenv("LOGINGOV_CONFIG_URL") or LOGINGOV_SANDBOX_CONFIG_URL
 
     if not base_url or not client_id:
-        raise ValueError(
-            "BASE_URL and LOGINGOV_CLIENT_ID are required when REQUIRE_AUTH=true"
-        )
+        raise ValueError("BASE_URL and LOGINGOV_CLIENT_ID are required when REQUIRE_AUTH=true")
 
     if not jwt_signing_key:
         raise ValueError(
             "JWT_SIGNING_KEY is required. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
 
     logger.info("Configuring login.gov OIDC authentication (public client with PKCE)")

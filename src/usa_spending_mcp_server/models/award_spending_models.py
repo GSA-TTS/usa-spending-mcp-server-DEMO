@@ -61,9 +61,7 @@ class AwardSearchRequest(BaseSearchRequest):
     """Award search request model"""
 
     filters: Annotated[AwardSearchFilters, Field(description="Filters for the award search")]
-    fields: Annotated[
-        list[str], Field(description="List of fields to include in the response")
-    ] = [
+    fields: Annotated[list[str], Field(description="List of fields to include in the response")] = [
         "Award ID",
         "Recipient Name",
         "Start Date",

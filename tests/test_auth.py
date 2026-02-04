@@ -7,7 +7,6 @@ import pytest
 
 from usa_spending_mcp_server.auth import (
     LOGINGOV_SANDBOX_CONFIG_URL,
-    LoginGovOIDCProxy,
     LoginGovTokenVerifier,
     create_logingov_auth,
 )
@@ -42,9 +41,8 @@ class TestCreateLogingovAuth:
             "LOGINGOV_CLIENT_ID": "test-client",
             "JWT_SIGNING_KEY": "test-key",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(ValueError, match="BASE_URL"):
-                create_logingov_auth()
+        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError, match="BASE_URL"):
+            create_logingov_auth()
 
     def test_raises_when_missing_client_id(self):
         """Test that missing LOGINGOV_CLIENT_ID raises ValueError."""
@@ -53,9 +51,8 @@ class TestCreateLogingovAuth:
             "BASE_URL": "https://example.com",
             "JWT_SIGNING_KEY": "test-key",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(ValueError, match="LOGINGOV_CLIENT_ID"):
-                create_logingov_auth()
+        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError, match="LOGINGOV_CLIENT_ID"):
+            create_logingov_auth()
 
     def test_raises_when_missing_jwt_key(self):
         """Test that missing JWT_SIGNING_KEY raises ValueError."""
@@ -64,9 +61,8 @@ class TestCreateLogingovAuth:
             "BASE_URL": "https://example.com",
             "LOGINGOV_CLIENT_ID": "test-client",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(ValueError, match="JWT_SIGNING_KEY"):
-                create_logingov_auth()
+        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError, match="JWT_SIGNING_KEY"):
+            create_logingov_auth()
 
 
 class TestConstants:

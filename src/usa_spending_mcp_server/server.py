@@ -55,7 +55,7 @@ mcp = FastMCP(
 
     ### 📊 HIGH-LEVEL ANALYSIS (Agency Totals & Comparisons)
     **Use when:** Answering "which agency/category spent the most" questions
-    - search_spending_explorer(): **BEST FOR:** 
+    - search_spending_explorer(): **BEST FOR:**
       * "Which agency had highest contract spending?"
       * "What are DOD's spending categories?"
       * "Compare agencies by object class"
@@ -65,7 +65,7 @@ mcp = FastMCP(
     ### 🏢 AGENCY DEEP DIVE
     **Use when:** You need to understand agency structure and program spending
     - get_sub_agency_list(): Get subagencies under a main agency
-    - get_sub_components_list(): Get bureaus/offices under an agency  
+    - get_sub_components_list(): Get bureaus/offices under an agency
     - get_sub_component_details(): Get detailed info about specific bureau/office
     - list_program_activities(): **BEST FOR:** IT spending analysis, program breakdowns
 
@@ -86,7 +86,7 @@ mcp = FastMCP(
       * "ZIP code analysis for grants"
     **Key:** Use place_of_performance vs recipient_location scope appropriately
 
-    ### 🏭 RECIPIENT ANALYSIS  
+    ### 🏭 RECIPIENT ANALYSIS
     **Use when:** Finding top contractors, grantees, or analyzing specific companies
     - search_recipients(): **BEST FOR:**
       * "Top 10 government contractors"
@@ -109,7 +109,7 @@ mcp = FastMCP(
     ❌ **Don't use search_spending_by_award for "which agency spent the most"**
     ✅ **Use search_spending_explorer instead**
 
-    ❌ **Don't use search_spending_explorer for individual contract details**  
+    ❌ **Don't use search_spending_explorer for individual contract details**
     ✅ **Use search_spending_by_award instead**
 
     ❌ **Don't forget to get agency codes first**
@@ -124,7 +124,7 @@ mcp = FastMCP(
 
     ### Award Types:
     - **A:** BPA (Blanket Purchase Agreement)
-    - **B:** IDV (Indefinite Delivery Vehicle)  
+    - **B:** IDV (Indefinite Delivery Vehicle)
     - **C:** Contract
     - **D:** Grant
     - **Use get_award_types() for complete list**

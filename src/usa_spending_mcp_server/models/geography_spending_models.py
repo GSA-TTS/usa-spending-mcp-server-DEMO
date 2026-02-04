@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import Field, ValidationInfo, field_validator
@@ -9,14 +9,14 @@ from usa_spending_mcp_server.models.common_models import (
 )
 
 
-class GeographicScope(str, Enum):
+class GeographicScope(StrEnum):
     """Geographic scope options"""
 
     PLACE_OF_PERFORMANCE = "place_of_performance"
     RECIPIENT_LOCATION = "recipient_location"
 
 
-class GeographicLayer(str, Enum):
+class GeographicLayer(StrEnum):
     """Geographic aggregation levels"""
 
     STATE = "state"
@@ -57,9 +57,7 @@ class GeographySearchRequest(BaseSearchRequest):
         for filter_code in v:
             if geo_layer == GeographicLayer.STATE:
                 # States: 2-letter codes or 2-digit FIPS
-                if not (
-                    len(filter_code) == 2 and (filter_code.isalpha() or filter_code.isdigit())
-                ):
+                if not (len(filter_code) == 2 and (filter_code.isalpha() or filter_code.isdigit())):
                     raise ValueError(
                         "State codes must be 2-letter postal codes or 2-digit FIPS codes: "
                         f"{filter_code}"
@@ -72,15 +70,14 @@ class GeographySearchRequest(BaseSearchRequest):
                 # ZIP: 5-digit ZIP codes
                 if not (len(filter_code) == 5 and filter_code.isdigit()):
                     raise ValueError(f"ZIP codes must be 5-digit codes: {filter_code}")
-            elif geo_layer == GeographicLayer.DISTRICT:
+            elif geo_layer == GeographicLayer.DISTRICT and not (
+                len(filter_code) >= 4
+                and filter_code[:2].isalpha()
+                and filter_code[2:].isdigit()
+            ):
                 # Districts: State code + district (e.g., WA01, CA12)
-                if not (
-                    len(filter_code) >= 4
-                    and filter_code[:2].isalpha()
-                    and filter_code[2:].isdigit()
-                ):
-                    raise ValueError(
-                        f"District codes must be state code + district number: {filter_code}"
-                    )
+                raise ValueError(
+                    f"District codes must be state code + district number: {filter_code}"
+                )
 
         return v

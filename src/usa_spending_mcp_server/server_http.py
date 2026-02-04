@@ -26,18 +26,15 @@ Environment variables:
 
 import logging
 import os
-from typing import Optional
 
 import uvicorn
 from fastmcp import FastMCP
-
-from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from usa_spending_mcp_server.server import mcp as base_mcp
 from usa_spending_mcp_server.auth import create_logingov_auth
 from usa_spending_mcp_server.client import USASpendingClient
+from usa_spending_mcp_server.server import mcp as base_mcp
 from usa_spending_mcp_server.tools.agency_spending import register_agency_tools
 from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
 from usa_spending_mcp_server.tools.geography_spending import register_geography_tools
@@ -73,7 +70,9 @@ def create_mcp_server() -> FastMCP:
     require_auth = _require_auth_env()
     if require_auth and not auth:
         # In production mode we must have auth configured
-        raise RuntimeError("Authentication is required in HTTP server mode but no auth was configured")
+        raise RuntimeError(
+            "Authentication is required in HTTP server mode but no auth was configured"
+        )
 
     logger.info("Creating MCP server (auth %s)", "enabled" if auth else "disabled")
     return FastMCP(
@@ -88,7 +87,8 @@ def create_mcp_server() -> FastMCP:
 mcp: FastMCP = create_mcp_server()
 
 # Global client - initialized lazily on first request/startup
-_client: Optional[USASpendingClient] = None
+_client: USASpendingClient | None = None
+
 
 def get_client() -> USASpendingClient:
     """Get the global HTTP client, initializing if needed (synchronous init only)."""
@@ -133,7 +133,7 @@ async def shutdown():
     logger.info("USA Spending MCP Server stopped")
 
 
-def _health_check(request):
+def _health_check():
     return JSONResponse({"status": "healthy"})
 
 
