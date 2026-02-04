@@ -51,7 +51,10 @@ class TestCreateLogingovAuth:
             "BASE_URL": "https://example.com",
             "JWT_SIGNING_KEY": "test-key",
         }
-        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError, match="LOGINGOV_CLIENT_ID"):
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(ValueError, match="LOGINGOV_CLIENT_ID"),
+        ):
             create_logingov_auth()
 
     def test_raises_when_missing_jwt_key(self):
@@ -61,7 +64,10 @@ class TestCreateLogingovAuth:
             "BASE_URL": "https://example.com",
             "LOGINGOV_CLIENT_ID": "test-client",
         }
-        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError, match="JWT_SIGNING_KEY"):
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(ValueError, match="JWT_SIGNING_KEY"),
+        ):
             create_logingov_auth()
 
 

@@ -71,9 +71,7 @@ class GeographySearchRequest(BaseSearchRequest):
                 if not (len(filter_code) == 5 and filter_code.isdigit()):
                     raise ValueError(f"ZIP codes must be 5-digit codes: {filter_code}")
             elif geo_layer == GeographicLayer.DISTRICT and not (
-                len(filter_code) >= 4
-                and filter_code[:2].isalpha()
-                and filter_code[2:].isdigit()
+                len(filter_code) >= 4 and filter_code[:2].isalpha() and filter_code[2:].isdigit()
             ):
                 # Districts: State code + district (e.g., WA01, CA12)
                 raise ValueError(
