@@ -229,7 +229,7 @@ class TestSearchAwards:
         from tests.conftest import SAMPLE_SPENDING_SUMMARY_RESPONSE
         from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
 
-        def keyword_side_effect(endpoint, payload=None): # noqa: ARG001
+        def keyword_side_effect(endpoint, payload=None):  # noqa: ARG001
             if "spending_by_award_count" in endpoint:
                 return SAMPLE_AWARD_COUNT_RESPONSE
             if "transaction_spending_summary" in endpoint:
