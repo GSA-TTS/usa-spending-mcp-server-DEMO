@@ -1,11 +1,11 @@
-from enum import Enum
-from typing import Annotated, Union
+from enum import StrEnum
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 from pydantic.functional_validators import field_validator
 
 
-class ExplorerType(str, Enum):
+class ExplorerType(StrEnum):
     """Types of spending explorer data groupings"""
 
     # General Explorer (top-level entry points)
@@ -21,7 +21,7 @@ class ExplorerType(str, Enum):
     PROGRAM_ACTIVITY = "program_activity"
 
 
-class Quarter(str, Enum):
+class Quarter(StrEnum):
     """Fiscal year quarters"""
 
     Q1 = "1"
@@ -30,7 +30,7 @@ class Quarter(str, Enum):
     Q4 = "4"
 
 
-class Period(str, Enum):
+class Period(StrEnum):
     """Fiscal year periods (months)"""
 
     P1 = "1"
@@ -65,7 +65,7 @@ class GeneralFilter(BaseModel):
         except ValueError as e:
             if "Data not available" in str(e):
                 raise e
-            raise ValueError("Fiscal year must be a valid year")
+            raise ValueError("Fiscal year must be a valid year") from e
 
 
 class DetailedFilter(BaseModel):
@@ -94,11 +94,11 @@ class DetailedFilter(BaseModel):
         except ValueError as e:
             if "Data not available" in str(e):
                 raise e
-            raise ValueError("Fiscal year must be a valid year")
+            raise ValueError("Fiscal year must be a valid year") from e
 
 
 class SpendingExplorerRequest(BaseModel):
     """Request model for spending explorer"""
 
     type: Annotated[ExplorerType, Field(description="Type of data grouping")]
-    filters: Annotated[Union[GeneralFilter, DetailedFilter], Field(description="Filter criteria")]
+    filters: Annotated[GeneralFilter | DetailedFilter, Field(description="Filter criteria")]

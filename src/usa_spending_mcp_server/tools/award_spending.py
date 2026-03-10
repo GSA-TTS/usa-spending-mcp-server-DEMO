@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import json
 import logging
 from typing import Annotated, Any
 
@@ -11,142 +13,276 @@ from usa_spending_mcp_server.models.award_spending_models import AwardSearchRequ
 logger = logging.getLogger(__name__)
 
 
+def _encode_cursor(page: int) -> str:
+    return base64.b64encode(json.dumps({"page": page}).encode()).decode()
+
+
+def _decode_cursor(cursor: str) -> int:
+    return json.loads(base64.b64decode(cursor.encode()))["page"]
+
+
 def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
-    """Register spending by award search tool"""
+    """Register award search tools."""
 
     @mcp.tool()
-    async def search_spending_by_award(
+    async def search_awards(
         award_search_request: AwardSearchRequest,
-        pages_to_fetch: int = 3,
+        cursor: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Opaque pagination cursor from a previous call's awards.next_cursor. "
+                    "When provided, only fetches the next page of awards (skips aggregate calls)."
+                )
+            ),
+        ] = None,
+        include_time_trends: Annotated[
+            bool,
+            Field(
+                description="Fetch spending_over_time trends (default: True). Set False to reduce latency."
+            ),
+        ] = True,
+        include_geography: Annotated[
+            bool,
+            Field(description="Fetch state-level spending_by_geography breakdown (default: True)."),
+        ] = True,
+        include_categories: Annotated[
+            bool,
+            Field(
+                description="Fetch awarding agency spending_by_category breakdown (default: True)."
+            ),
+        ] = True,
     ) -> Any:
         """
-        Search USA government spending data by award with filtering capabilities.
+        Comprehensive award search mirroring the USASpending website's multi-API pattern.
+
+        On the **first call** (no cursor), fetches award records AND aggregate data in parallel:
+        - Individual award records (spending_by_award)
+        - Award counts by type (spending_by_award_count)
+        - Total transaction count + obligation sum (transaction_spending_summary)
+        - Spending trends by fiscal year (spending_over_time) [if include_time_trends=True]
+        - State-level geographic breakdown (spending_by_geography) [if include_geography=True]
+        - Awarding agency breakdown (spending_by_category) [if include_categories=True]
+
+        On **subsequent calls** (cursor provided), only fetches the next page of awards.
+        Use awards.next_cursor from the previous response as the cursor argument.
 
         Args:
-            award_search_request: Structured request object containing:
-                - filters: AwardSearchFilters with optional fields:
-                    - time_period: List of TimePeriod objects with start_date and end_date
-                        (YYYY-MM-DD)
-                    - award_type_codes: List of award type codes (A, B, C, D, etc.)
-                    - agencies: List of Agency objects with name, type (awarding/funding), tier
-                         (toptier/subtier)
-                    - recipient_search_text: List of recipient names to search for
-                    - award_ids: List of specific award IDs to filter by
-                    - keywords: List of keywords to search in award descriptions
-                    - award_amounts: List of AwardAmount objects with lower_bound/upper_bound
-                    - program_activities: List of ProgramActivityObject with name/code
-                    - recipient_type_names: List of recipient type names to filter by
-                        (e.g., 'category_business', 'sole_proprietorship', 'nonprofit',
-                        'community_development_corporations', 'tribally_owned_firm')
-                - fields: List of field names to include in response (default: basic award fields)
-                - pagination: BasePagination with page, limit, order (asc/desc)
-                - sort: Sort field name
-                - subawards: Include subaward data (default: False)
-            pages_to_fetch: Maximum number of pages to fetch (default: 3)
+            award_search_request: Filters, fields, pagination, sort, subawards.
+                - filters.time_period: List of {start_date, end_date} in YYYY-MM-DD
+                - filters.award_type_codes: e.g. ["A","B","C","D"] for contracts
+                - filters.agencies: List of agency objects
+                - filters.recipient_search_text: e.g. ["Ernst & Young"]
+                - filters.keywords: e.g. ["broadband", "cybersecurity"]
+                - filters.award_amounts: e.g. [{lower_bound: 1000000}]
+            cursor: Pagination cursor from previous response (awards.next_cursor).
+            include_time_trends: Whether to fetch spending_over_time (default: True).
+            include_geography: Whether to fetch spending_by_geography (default: True).
+            include_categories: Whether to fetch spending_by_category (default: True).
 
         Returns:
-            Raw API response data as JSON string containing:
-            - results: Array of award records
-            - page_metadata: Pagination information including total_results_fetched
-                and pages_fetched
+            First call — dict with keys:
+              awards: {results, page_metadata, next_cursor}
+              summary: {award_counts_by_type, totals}
+              trends: {group, results} or {error}
+              geography: {scope, geo_layer, results} or {error}
+              categories: {category, results} or {error}
+
+            Subsequent calls (cursor provided) — dict with key:
+              awards: {results, page_metadata, next_cursor}
 
         Examples:
-            - Search DOD OIG contracts over $1M in FY2024:
-                AwardSearchRequest with filters containing
-                    agencies=[
-                        Agency(
-                            name="Office of the Inspector General",
-                            toptier_name="Department of Defense",
-                            type=AgencyType.AWARDING,
-                            tier=AgencyTier.TOPTIER
-                        )
-                    ],
-                award_amounts=[AwardAmount(lower_bound=1000000)],
-                    time_period=[TimePeriod(start_date="2023-10-01", end_date="2024-09-30")]
-            - Search by keywords:
-                AwardSearchRequest with filters containing
-                    keywords=["cybersecurity", "IT services"]
-            - Search specific award IDs:
-                AwardSearchRequest with filters containing
-                    award_ids=["CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-"]
-            - Search for nonprofit grant recipients:
-                AwardSearchRequest with filters containing
-                    award_type_codes=["02", "03", "04", "05"],
-                    recipient_type_names=["nonprofit"],
-                    time_period=[TimePeriod(start_date="2024-01-01", end_date="2024-12-31")]
+            # Search HHS OIG contracts in FY2023
+            search_awards(AwardSearchRequest(filters=AwardSearchFilters(
+                agencies=[Agency(name="Office of the Inspector General",
+                                 toptier_name="Department of Defense",
+                                 type=AgencyType.AWARDING, tier=AgencyTier.TOPTIER)],
+                award_type_codes=["A","B","C","D"],
+                time_period=[TimePeriod(start_date="2022-10-01", end_date="2023-09-30")]
+            )))
+
+            # Get next page
+            search_awards(previous_request, cursor=previous_response["awards"]["next_cursor"])
         """
+        filters_payload = award_search_request.model_dump(exclude_none=True)
 
-        try:
-            # Make initial API call
-            response = await client.post(
-                "search/spending_by_award/", award_search_request.model_dump(exclude_none=True)
-            )
-            logger.info(response)
+        # --- Cursor path: only fetch next page of awards ---
+        if cursor is not None:
+            try:
+                next_page = _decode_cursor(cursor)
+            except Exception:
+                return {"error": f"Invalid cursor: {cursor}"}
 
-            # If not fetching all pages, return first page
-            if pages_to_fetch <= 1:
-                return response
+            paginated = award_search_request.model_copy(deep=True)
+            paginated.pagination.page = next_page
+            payload = paginated.model_dump(exclude_none=True)
 
-            # Initialize collection
-            all_results = response.get("results", [])
-            pages_fetched = 1
-            current_page = award_search_request.pagination.page or 1
+            try:
+                response = await client.post("search/spending_by_award/", payload)
+            except Exception as e:
+                return {"error": f"Error fetching awards page {next_page}: {e}"}
 
-            # Get pagination metadata
-            page_metadata = response.get("page_metadata", {})
-            has_next = page_metadata.get("hasNext", False)
-            logger.info("Page metadata: %s", page_metadata)
-            logger.info(f"Has next page: {has_next}")
-
-            # Continue fetching while there are more pages and under limit
-            while has_next and pages_fetched < pages_to_fetch:
-                current_page += 1
-                pages_fetched += 1
-
-                # Create next page request (shallow copy is sufficient)
-                next_request = award_search_request.model_copy()
-                next_request.pagination.page = current_page
-
-                try:
-                    # Fetch next page
-                    next_response = await client.post(
-                        "search/spending_by_award/", next_request.model_dump(exclude_none=True)
-                    )
-
-                    # Append results
-                    page_results = next_response.get("results", [])
-                    all_results.extend(page_results)
-
-                    # Update pagination info
-                    page_metadata = next_response.get("page_metadata", {})
-                    has_next = page_metadata.get("hasNext", False)
-
-                    # Break if no results on this page
-                    if not page_results:
-                        break
-
-                except Exception as e:
-                    # Log error but don't fail completely - return what we have
-                    logger.error(f"Error fetching page {current_page}: {str(e)}")
-                    break
-
-            # Build final response with enhanced metadata
-            final_response = response.copy()
-            final_response["results"] = all_results
-            final_response["page_metadata"].update(
-                {
-                    "total_results_fetched": len(all_results),
-                    "pages_fetched": pages_fetched,
-                    "requested_max_pages": pages_to_fetch,
-                    "has_more_pages": has_next,
-                    "fetch_completed": not has_next or pages_fetched >= pages_to_fetch,
+            page_meta = response.get("page_metadata", {})
+            has_next = page_meta.get("hasNext", False)
+            return {
+                "awards": {
+                    "results": response.get("results", []),
+                    "page_metadata": page_meta,
+                    "next_cursor": _encode_cursor(next_page + 1) if has_next else None,
                 }
+            }
+
+        # --- First call: parallel fetch of awards + all aggregate data ---
+        base_filters = award_search_request.filters.model_dump(exclude_none=True)
+
+        async def fetch_awards():
+            return await client.post("search/spending_by_award/", filters_payload)
+
+        async def fetch_award_count():
+            return await client.post("search/spending_by_award_count/", {"filters": base_filters})
+
+        async def fetch_spending_summary():
+            return await client.post(
+                "search/transaction_spending_summary/", {"filters": base_filters}
             )
 
-            return final_response
+        async def fetch_over_time():
+            return await client.post(
+                "search/spending_over_time/",
+                {"group": "fiscal_year", "filters": base_filters},
+            )
 
-        except Exception as e:
-            return f"Error searching spending by award: {str(e)}"
+        async def fetch_geography():
+            return await client.post(
+                "search/spending_by_geography/",
+                {
+                    "scope": "place_of_performance",
+                    "geo_layer": "state",
+                    "filters": base_filters,
+                },
+            )
+
+        async def fetch_category():
+            return await client.post(
+                "search/spending_by_category/awarding_agency/",
+                {"filters": base_filters},
+            )
+
+        # Build list of coroutines; supplementary ones are conditional
+        supplementary_tasks = []
+        task_keys = []
+
+        supplementary_tasks.append(fetch_award_count())
+        task_keys.append("award_count")
+
+        supplementary_tasks.append(fetch_spending_summary())
+        task_keys.append("spending_summary")
+
+        if include_time_trends:
+            supplementary_tasks.append(fetch_over_time())
+            task_keys.append("over_time")
+
+        if include_geography:
+            supplementary_tasks.append(fetch_geography())
+            task_keys.append("geography")
+
+        if include_categories:
+            supplementary_tasks.append(fetch_category())
+            task_keys.append("category")
+
+        # Gather awards + all supplementary in parallel
+        all_coros = [fetch_awards(), *supplementary_tasks]
+        results = await asyncio.gather(*all_coros, return_exceptions=True)
+
+        awards_result = results[0]
+        supplementary_results = dict(zip(task_keys, results[1:], strict=False))
+
+        # Handle primary awards failure
+        if isinstance(awards_result, Exception):
+            return {"error": f"Error fetching awards: {awards_result}"}
+
+        page_meta = awards_result.get("page_metadata", {})
+        has_next = page_meta.get("hasNext", False)
+
+        awards_section = {
+            "results": awards_result.get("results", []),
+            "page_metadata": page_meta,
+            "next_cursor": _encode_cursor(2) if has_next else None,
+        }
+
+        # Build summary (award_count + spending_summary)
+        def _safe_result(key):
+            r = supplementary_results.get(key)
+            if isinstance(r, Exception):
+                return None, str(r)
+            return r, None
+
+        count_data, count_err = _safe_result("award_count")
+        summary_data, summary_err = _safe_result("spending_summary")
+
+        summary_section: dict[str, Any] = {}
+        if count_data is not None:
+            summary_section["award_counts_by_type"] = count_data.get("results", count_data)
+        elif count_err:
+            summary_section["award_counts_error"] = count_err
+
+        if summary_data is not None:
+            summary_section["totals"] = summary_data.get("results", summary_data)
+        elif summary_err:
+            summary_section["totals_error"] = summary_err
+
+        # Build trends section
+        over_time_data, over_time_err = _safe_result("over_time")
+        if include_time_trends:
+            if over_time_data is not None:
+                trends_section: dict[str, Any] = {
+                    "group": over_time_data.get("group", "fiscal_year"),
+                    "results": over_time_data.get("results", []),
+                }
+            else:
+                trends_section = {"error": over_time_err}
+        else:
+            trends_section = {}
+
+        # Build geography section
+        geo_data, geo_err = _safe_result("geography")
+        if include_geography:
+            if geo_data is not None:
+                geography_section: dict[str, Any] = {
+                    "scope": "place_of_performance",
+                    "geo_layer": "state",
+                    "results": geo_data.get("results", []),
+                }
+            else:
+                geography_section = {"error": geo_err}
+        else:
+            geography_section = {}
+
+        # Build categories section
+        cat_data, cat_err = _safe_result("category")
+        if include_categories:
+            if cat_data is not None:
+                categories_section: dict[str, Any] = {
+                    "category": "awarding_agency",
+                    "results": cat_data.get("results", []),
+                }
+            else:
+                categories_section = {"error": cat_err}
+        else:
+            categories_section = {}
+
+        response_body: dict[str, Any] = {
+            "awards": awards_section,
+            "summary": summary_section,
+        }
+        if include_time_trends:
+            response_body["trends"] = trends_section
+        if include_geography:
+            response_body["geography"] = geography_section
+        if include_categories:
+            response_body["categories"] = categories_section
+
+        return response_body
 
     @mcp.tool()
     async def get_award_details(
@@ -160,49 +296,29 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         """
         Get detailed information about specific government award(s).
 
-        This endpoint provides comprehensive details about one or more contracts, grants, loans,
-        or other awards including amounts, dates, recipients, agencies, and transaction history.
+        Fetches comprehensive award details including amounts, dates, recipients, agencies,
+        and transaction history. Supports up to 10 awards per call, fetched in parallel.
 
         Args:
-            award_ids: List of award IDs
-                - Single: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-']
-                - Multiple: ['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-',
-                    'CONT_AWD_W91ZRS23C0001_9702_-NONE-_-NONE-']
-                - Contract IDs typically start with letters followed by numbers
-                - Grant IDs vary by agency
-                - Can be found using search_spending_by_award (generated_internal_id field) tool
-            max_concurrent: Maximum number of concurrent requests (default: 10, max: 10)
+            award_ids: List of award IDs (found via search_awards generated_internal_id field).
+                - Contracts start with: CONT_AWD_...
+                - Grants vary by agency
+            max_concurrent: Max parallel requests (default: 10, max: 10).
 
         Returns:
-            Raw API response data as JSON string containing:
-            - For single award: Award details object
-            - For multiple awards: Dictionary with award_id as key and details as value
-            - Award overview (total obligation, dates, type)
-            - Recipient details (name, address, DUNS/UEI)
-            - Agency information (awarding and funding agencies)
-            - Place of performance
-            - Transaction history
-            - Contract details (if applicable)
-            - Federal account funding
-            - Executive compensation (if disclosed)
+            Dict with:
+            - success_count: Number of successfully fetched awards
+            - error_count: Number of failed fetches
+            - results: {award_id: award_detail_object}
+            - errors: {award_id: error_message} (if any failures)
 
         Examples:
-            - Single contract:
-                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-'])
-            - Multiple contracts:
-                get_award_details(award_ids=['CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-,
-                    CONT_AWD_W91ZRS23C0001_9701_-NONE-_-NONE-'])
+            get_award_details(award_ids=["CONT_AWD_W91ZRS23C0001_9700_-NONE-_-NONE-"])
         """
-
         try:
-            if not award_ids:
-                return "Error: No valid award IDs provided"
-
-            # Limit concurrent requests
             max_concurrent = min(max_concurrent, 10, len(award_ids))
             semaphore = asyncio.Semaphore(max_concurrent)
 
-            # Simple parallel fetch function
             async def fetch_award(aid: str) -> dict[str, Any]:
                 async with semaphore:
                     try:
@@ -211,28 +327,23 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
                     except Exception as e:
                         return {"award_id": aid, "success": False, "error": str(e)}
 
-            # Execute all requests concurrently
             results = await asyncio.gather(*[fetch_award(aid) for aid in award_ids])
 
-            # Build response
             success_results = {}
             error_results = {}
-
             for result in results:
                 if result["success"]:
                     success_results[result["award_id"]] = result["data"]
                 else:
                     error_results[result["award_id"]] = result["error"]
 
-            response = {
+            response: dict[str, Any] = {
                 "success_count": len(success_results),
                 "error_count": len(error_results),
                 "results": success_results,
             }
-
             if error_results:
                 response["errors"] = error_results
-
             return response
 
         except Exception as e:

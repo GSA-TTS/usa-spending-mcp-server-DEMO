@@ -10,7 +10,7 @@ def register_program_activity_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def list_program_activities(
-        toptier_code: Annotated[int, "The toptier code of the agency (e.g., 086)"],
+        toptier_code: Annotated[str, "The toptier code of the agency (e.g., '086', '097')"],
         fiscal_year: Annotated[
             str | None, "The fiscal year to query (optional; defaults to current FY)"
         ] = None,

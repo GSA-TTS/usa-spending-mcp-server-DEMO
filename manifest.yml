@@ -1,0 +1,33 @@
+---
+applications:
+  - name: usa-spending-mcp-server
+    buildpacks:
+      - python_buildpack
+    memory: 512M
+    disk_quota: 1G
+    instances: 1
+
+    # cloud.gov uses PORT env var (default 8080)
+    command: PYTHONPATH=src python -m usa_spending_mcp_server.server_http
+
+    # Public route for MCP clients (auth handled by the server via login.gov OIDC)
+    routes:
+      - route: usa-spending-mcp.app.cloud.gov
+
+    # Health check
+    health-check-type: http
+    health-check-http-endpoint: /health
+
+    env:
+      # Python settings
+      PYTHONPATH: src
+      PYTHONUNBUFFERED: "1"
+
+      # Authentication via login.gov OIDC (public client with PKCE)
+      # Set these via `cf set-env` for security:
+      #   cf set-env usa-spending-mcp-server BASE_URL https://usa-spending-mcp.app.cloud.gov
+      #   cf set-env usa-spending-mcp-server LOGINGOV_CLIENT_ID (your login.gov client ID)
+      #   cf set-env usa-spending-mcp-server JWT_SIGNING_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+
+      # Set to "false" to disable auth for testing
+      # REQUIRE_AUTH: "true"

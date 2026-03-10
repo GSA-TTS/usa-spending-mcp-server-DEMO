@@ -1,12 +1,12 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import field_validator, model_validator
 
 
-class AwardTypeCode(str, Enum):
+class AwardTypeCode(StrEnum):
     """Award type codes for filtering"""
 
     BPA_CALL = "A"
@@ -27,21 +27,21 @@ class AwardTypeCode(str, Enum):
     IDV = "IDV"
 
 
-class AgencyTier(str, Enum):
+class AgencyTier(StrEnum):
     """Agency tier types"""
 
     TOPTIER = "toptier"
     SUBTIER = "subtier"
 
 
-class AgencyType(str, Enum):
+class AgencyType(StrEnum):
     """Agency types for filtering"""
 
     AWARDING = "awarding"
     FUNDING = "funding"
 
 
-class SortOrder(str, Enum):
+class SortOrder(StrEnum):
     """Sort order options"""
 
     ASC = "asc"
@@ -60,8 +60,8 @@ class TimePeriod(BaseModel):
         try:
             datetime.strptime(v, "%Y-%m-%d")
             return v
-        except ValueError:
-            raise ValueError("Date must be in YYYY-MM-DD format")
+        except ValueError as e:
+            raise ValueError("Date must be in YYYY-MM-DD format") from e
 
     @model_validator(mode="after")
     def validate_date_range(self):
