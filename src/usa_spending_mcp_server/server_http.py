@@ -73,7 +73,7 @@ def create_server() -> FastMCP:
     server = FastMCP(
         name="USASpendingServer",
         instructions=base_mcp.instructions,
-        auth=auth,
+        auth=auth if require_auth else None,
     )
 
     logger.info("Registering tools")
