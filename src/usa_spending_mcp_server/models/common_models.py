@@ -24,24 +24,24 @@ class AwardTypeCode(StrEnum):
     OTHER_09 = "09"
     OTHER_11 = "11"
     OTHER_NEG1 = "-1"
-    IDV_A = "IDV_A"      # GWAC
-    IDV_B = "IDV_B"      # IDC Multi-Agency Contract
+    IDV_A = "IDV_A"  # GWAC
+    IDV_B = "IDV_B"  # IDC Multi-Agency Contract
     IDV_B_A = "IDV_B_A"  # IDC / Requirements
     IDV_B_B = "IDV_B_B"  # IDC / Indefinite Quantity
     IDV_B_C = "IDV_B_C"  # IDC / Definite Quantity
-    IDV_C = "IDV_C"      # FSS Federal Supply Schedule
-    IDV_D = "IDV_D"      # BOA Basic Ordering Agreement
-    IDV_E = "IDV_E"      # BPA Blanket Purchase Agreement
-    F001 = "F001"        # Grant
-    F002 = "F002"        # Cooperative Agreement
-    F003 = "F003"        # Direct Loan
-    F004 = "F004"        # Loan Guarantee
-    F005 = "F005"        # Indemnity / Insurance
-    F006 = "F006"        # Direct Payment for Specified Use
-    F007 = "F007"        # Direct Payment with Unrestricted Use
-    F008 = "F008"        # Asset Forfeiture / Equitable Sharing
-    F009 = "F009"        # Sale, Exchange, or Donation
-    F010 = "F010"        # Other Financial Assistance
+    IDV_C = "IDV_C"  # FSS Federal Supply Schedule
+    IDV_D = "IDV_D"  # BOA Basic Ordering Agreement
+    IDV_E = "IDV_E"  # BPA Blanket Purchase Agreement
+    F001 = "F001"  # Grant
+    F002 = "F002"  # Cooperative Agreement
+    F003 = "F003"  # Direct Loan
+    F004 = "F004"  # Loan Guarantee
+    F005 = "F005"  # Indemnity / Insurance
+    F006 = "F006"  # Direct Payment for Specified Use
+    F007 = "F007"  # Direct Payment with Unrestricted Use
+    F008 = "F008"  # Asset Forfeiture / Equitable Sharing
+    F009 = "F009"  # Sale, Exchange, or Donation
+    F010 = "F010"  # Other Financial Assistance
 
 
 class AgencyTier(StrEnum):

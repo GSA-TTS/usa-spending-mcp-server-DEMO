@@ -226,10 +226,10 @@ class TestSearchAwards:
 
     async def test_summary_contains_totals_when_keywords_provided(self, mock_usa_client):
         """With keywords, summary includes totals from transaction_spending_summary."""
-        from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
         from tests.conftest import SAMPLE_SPENDING_SUMMARY_RESPONSE
+        from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
 
-        def keyword_side_effect(endpoint, payload=None):
+        def keyword_side_effect(endpoint, payload=None): # noqa: ARG001
             if "spending_by_award_count" in endpoint:
                 return SAMPLE_AWARD_COUNT_RESPONSE
             if "transaction_spending_summary" in endpoint:
