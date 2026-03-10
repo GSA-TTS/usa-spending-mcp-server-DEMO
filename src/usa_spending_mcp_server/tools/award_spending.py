@@ -103,6 +103,16 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
             # Get next page
             search_awards(previous_request, cursor=previous_response["awards"]["next_cursor"])
+
+        Known API quirks:
+            - recipient_search_text + agencies filters may not work together reliably.
+              Workaround: use `keywords` instead, or search broadly and filter results.
+            - award_type_codes must all be from the same group (contracts, grants, IDVs,
+              loans, etc.). Mixing groups returns HTTP 422. Make separate calls per group.
+            - transaction_spending_summary requires `keywords` in filters; the tool skips
+              this call automatically when keywords are absent.
+            - Award Amount in results is the *total award value*, not FY-specific obligations.
+              For FY-specific obligation data, use get_award_details on individual awards.
         """
         filters_payload = award_search_request.model_dump(exclude_none=True)
 
@@ -175,8 +185,10 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         supplementary_tasks.append(fetch_award_count())
         task_keys.append("award_count")
 
-        supplementary_tasks.append(fetch_spending_summary())
-        task_keys.append("spending_summary")
+        has_keywords = bool(base_filters.get("keywords"))
+        if has_keywords:
+            supplementary_tasks.append(fetch_spending_summary())
+            task_keys.append("spending_summary")
 
         if include_time_trends:
             supplementary_tasks.append(fetch_over_time())
