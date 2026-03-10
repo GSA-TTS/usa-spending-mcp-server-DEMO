@@ -215,14 +215,52 @@ class TestSearchAwards:
         assert "geography" in data
         assert "categories" in data
 
-    async def test_summary_contains_award_counts_and_totals(self, award_mcp_client):
-        """Summary section contains both award_counts_by_type and totals."""
+    async def test_summary_contains_award_counts_without_keywords(self, award_mcp_client):
+        """Without keywords, summary only has award_counts_by_type (no totals)."""
         result = await award_mcp_client.call_tool("search_awards", MINIMAL_REQUEST)
         data = result.data
 
         assert "award_counts_by_type" in data["summary"]
-        assert "totals" in data["summary"]
+        assert "totals" not in data["summary"]
         assert data["summary"]["award_counts_by_type"] == SAMPLE_AWARD_COUNT_RESPONSE["results"]
+
+    async def test_summary_contains_totals_when_keywords_provided(self, mock_usa_client):
+        """With keywords, summary includes totals from transaction_spending_summary."""
+        from tests.conftest import SAMPLE_SPENDING_SUMMARY_RESPONSE
+        from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
+
+        def keyword_side_effect(endpoint, payload=None):  # noqa: ARG001
+            if "spending_by_award_count" in endpoint:
+                return SAMPLE_AWARD_COUNT_RESPONSE
+            if "transaction_spending_summary" in endpoint:
+                return SAMPLE_SPENDING_SUMMARY_RESPONSE
+            if "spending_over_time" in endpoint:
+                return SAMPLE_SPENDING_OVER_TIME_RESPONSE
+            if "spending_by_geography" in endpoint:
+                return SAMPLE_GEOGRAPHY_RESPONSE
+            if "spending_by_category" in endpoint:
+                return SAMPLE_CATEGORY_RESPONSE
+            return SAMPLE_AWARDS_RESPONSE
+
+        mock_usa_client.post.side_effect = keyword_side_effect
+
+        mcp = FastMCP("test")
+        register_award_search_tools(mcp, mock_usa_client)
+
+        request_with_keywords = {
+            "award_search_request": {
+                "filters": {
+                    "time_period": [{"start_date": "2023-10-01", "end_date": "2024-09-30"}],
+                    "keywords": ["cybersecurity"],
+                }
+            }
+        }
+        async with Client(transport=mcp) as client:
+            result = await client.call_tool("search_awards", request_with_keywords)
+            data = result.data
+
+        assert "award_counts_by_type" in data["summary"]
+        assert "totals" in data["summary"]
         assert data["summary"]["totals"] == SAMPLE_SPENDING_SUMMARY_RESPONSE["results"]
 
     async def test_trends_contains_spending_over_time(self, award_mcp_client):

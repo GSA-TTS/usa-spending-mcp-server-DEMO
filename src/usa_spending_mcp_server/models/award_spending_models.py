@@ -1,12 +1,21 @@
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from usa_spending_mcp_server.models.common_models import (
     AwardTypeCode,
     BaseSearchFilters,
     BaseSearchRequest,
 )
+
+AWARD_TYPE_GROUPS = {
+    "contracts": {"A", "B", "C", "D"},
+    "grants": {"02", "03", "04", "05", "F001", "F002"},
+    "idvs": {"IDV_A", "IDV_B", "IDV_B_A", "IDV_B_B", "IDV_B_C", "IDV_C", "IDV_D", "IDV_E"},
+    "loans": {"07", "08", "F003", "F004"},
+    "other_financial_assistance": {"06", "10", "F006", "F007"},
+    "direct_payments": {"09", "11", "-1", "F005", "F008", "F009", "F010"},
+}
 
 
 class AwardDetailsRequest(BaseModel):
@@ -56,6 +65,25 @@ class AwardSearchFilters(BaseSearchFilters):
         list[ProgramActivityObject] | None, Field(description="List of program activities")
     ] = None
 
+    @model_validator(mode="after")
+    def validate_award_type_codes(self):
+        codes = self.award_type_codes
+        if not codes:
+            return self
+        code_values = {c.value if hasattr(c, "value") else c for c in codes}
+        matched_groups = [
+            group_name
+            for group_name, group_codes in AWARD_TYPE_GROUPS.items()
+            if code_values & group_codes
+        ]
+        if len(matched_groups) > 1:
+            raise ValueError(
+                f"award_type_codes mixes groups {matched_groups}. "
+                f"The USASpending API requires all codes from a single group. "
+                f"Make separate calls for each group."
+            )
+        return self
+
 
 class AwardSearchRequest(BaseSearchRequest):
     """Award search request model"""
@@ -72,6 +100,7 @@ class AwardSearchRequest(BaseSearchRequest):
         "Awarding Agency",
         "Awarding Sub Agency",
         "Award Type",
+        "generated_internal_id",
     ]
     sort: Annotated[str | None, Field(description="Sort order for the award search")] = None
     subawards: Annotated[
