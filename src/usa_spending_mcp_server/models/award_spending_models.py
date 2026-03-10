@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from usa_spending_mcp_server.models.common_models import (
     AwardTypeCode,
@@ -59,6 +59,8 @@ class AwardSearchFilters(BaseSearchFilters):
 
 class AwardSearchRequest(BaseSearchRequest):
     """Award search request model"""
+
+    model_config = ConfigDict(extra="ignore")
 
     filters: Annotated[AwardSearchFilters, Field(description="Filters for the award search")]
     fields: Annotated[list[str], Field(description="List of fields to include in the response")] = [

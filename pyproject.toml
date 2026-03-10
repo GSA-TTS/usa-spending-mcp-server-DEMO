@@ -8,9 +8,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=2.9.2,<3",
+    "fastmcp[code-mode]>=3.1.0",
     "httpx>=0.28.1,<0.29",
-    "mcp>=1.11.0,<2",
     "uvicorn>=0.30.0",
     "starlette>=0.38.0",
 ]
@@ -26,6 +25,8 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.8.0",
     "taskipy>=1.14.0",
+    "inline-snapshot>=0.19.0",
+    "dirty-equals>=0.8.0",
 ]
 
 [build-system]
