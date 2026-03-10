@@ -106,8 +106,8 @@ class TestSearchAwards:
         payload = call_args[0][1]
         assert payload["pagination"]["page"] == 2
 
-    async def test_include_time_trends_false_skips_spending_over_time(self, mock_usa_client):
-        """Setting include_time_trends=False skips the spending_over_time call."""
+    async def test_include_time_trends_false_still_calls_spending_over_time(self, mock_usa_client):
+        """spending_over_time is always called for totals fallback, even with trends=False."""
         calls_made = []
 
         async def tracking_side_effect(endpoint, _data):
@@ -116,6 +116,8 @@ class TestSearchAwards:
                 return SAMPLE_AWARD_COUNT_RESPONSE
             if "transaction_spending_summary" in endpoint:
                 return SAMPLE_SPENDING_SUMMARY_RESPONSE
+            if "spending_over_time" in endpoint:
+                return SAMPLE_SPENDING_OVER_TIME_RESPONSE
             if "spending_by_geography" in endpoint:
                 return SAMPLE_GEOGRAPHY_RESPONSE
             if "spending_by_category" in endpoint:
@@ -131,7 +133,9 @@ class TestSearchAwards:
                 "search_awards", {**MINIMAL_REQUEST, "include_time_trends": False}
             )
 
-        assert not any("spending_over_time" in ep for ep in calls_made)
+        # spending_over_time is now always called for totals fallback,
+        # but the trends section should not be included in the response
+        assert any("spending_over_time" in ep for ep in calls_made)
 
     async def test_include_geography_false_skips_geography_call(self, mock_usa_client):
         """Setting include_geography=False skips the spending_by_geography call."""
@@ -215,13 +219,15 @@ class TestSearchAwards:
         assert "geography" in data
         assert "categories" in data
 
-    async def test_summary_contains_award_counts_without_keywords(self, award_mcp_client):
-        """Without keywords, summary only has award_counts_by_type (no totals)."""
+    async def test_summary_contains_totals_from_spending_over_time_fallback(self, award_mcp_client):
+        """Without keywords, totals are computed from spending_over_time fallback."""
         result = await award_mcp_client.call_tool("search_awards", MINIMAL_REQUEST)
         data = result.data
 
         assert "award_counts_by_type" in data["summary"]
-        assert "totals" not in data["summary"]
+        assert "totals" in data["summary"]
+        assert data["summary"]["totals"]["source"] == "spending_over_time"
+        assert data["summary"]["totals"]["prime_awards_obligation_amount"] > 0
         assert data["summary"]["award_counts_by_type"] == SAMPLE_AWARD_COUNT_RESPONSE["results"]
 
     async def test_summary_contains_totals_when_keywords_provided(self, mock_usa_client):

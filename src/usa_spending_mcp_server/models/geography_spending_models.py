@@ -36,7 +36,15 @@ class GeographySearchRequest(BaseSearchRequest):
 
     scope: Annotated[GeographicScope, Field(description="Geographic scope")]
     geo_layer: Annotated[GeographicLayer, Field(description="Geographic layer")]
-    geo_layer_filters: Annotated[list[str], Field(description="Geographic layer filters")]
+    geo_layer_filters: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Geographic layer filters. Pass an empty list to return ALL results "
+                "for the specified layer (e.g., all states, all districts)."
+            )
+        ),
+    ] = []
     filters: Annotated[
         GeographySearchFilters, Field(description="Filters for the geography search")
     ]
@@ -48,10 +56,9 @@ class GeographySearchRequest(BaseSearchRequest):
     @field_validator("geo_layer_filters")
     @classmethod
     def validate_geo_filters(cls, v: list[str], info: ValidationInfo) -> list[str]:
-        """Validate geographic filters based on geo_layer"""
-        # Get geo_layer from the data being validated
+        """Validate geographic filters based on geo_layer. Empty list is allowed."""
         geo_layer = info.data.get("geo_layer")
-        if not geo_layer:
+        if not geo_layer or not v:
             return v
 
         for filter_code in v:

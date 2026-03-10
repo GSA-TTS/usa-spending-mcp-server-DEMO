@@ -190,9 +190,10 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             supplementary_tasks.append(fetch_spending_summary())
             task_keys.append("spending_summary")
 
-        if include_time_trends:
-            supplementary_tasks.append(fetch_over_time())
-            task_keys.append("over_time")
+        # Always fetch spending_over_time — it provides obligation totals
+        # even without keywords (unlike transaction_spending_summary)
+        supplementary_tasks.append(fetch_over_time())
+        task_keys.append("over_time")
 
         if include_geography:
             supplementary_tasks.append(fetch_geography())
@@ -231,6 +232,7 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
 
         count_data, count_err = _safe_result("award_count")
         summary_data, summary_err = _safe_result("spending_summary")
+        over_time_data, over_time_err = _safe_result("over_time")
 
         summary_section: dict[str, Any] = {}
         if count_data is not None:
@@ -243,8 +245,17 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         elif summary_err:
             summary_section["totals_error"] = summary_err
 
+        # Fallback: compute totals from spending_over_time when
+        # transaction_spending_summary is unavailable (no keywords)
+        if "totals" not in summary_section and over_time_data is not None:
+            ot_results = over_time_data.get("results", [])
+            total_obligations = sum(r.get("aggregated_amount", 0) for r in ot_results)
+            summary_section["totals"] = {
+                "prime_awards_obligation_amount": total_obligations,
+                "source": "spending_over_time",
+            }
+
         # Build trends section
-        over_time_data, over_time_err = _safe_result("over_time")
         if include_time_trends:
             if over_time_data is not None:
                 trends_section: dict[str, Any] = {

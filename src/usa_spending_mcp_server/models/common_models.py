@@ -65,10 +65,21 @@ class SortOrder(StrEnum):
     DESC = "desc"
 
 
+EARLIEST_SEARCH_DATE = datetime(2007, 10, 1)
+
+
 class TimePeriod(BaseModel):
     """Time period filter"""
 
-    start_date: Annotated[str, Field(description="Start date in YYYY-MM-DD format")]
+    start_date: Annotated[
+        str,
+        Field(
+            description=(
+                "Start date in YYYY-MM-DD format. "
+                "Earliest allowed: 2007-10-01. For older data, use bulk download."
+            )
+        ),
+    ]
     end_date: Annotated[str, Field(description="End date in YYYY-MM-DD format")]
 
     @field_validator("start_date", "end_date")
@@ -86,6 +97,12 @@ class TimePeriod(BaseModel):
         end_dt = datetime.strptime(self.end_date, "%Y-%m-%d")
         if start_dt > end_dt:
             raise ValueError("start_date must be before end_date")
+        if start_dt < EARLIEST_SEARCH_DATE:
+            raise ValueError(
+                f"start_date {self.start_date} is before the earliest available search date "
+                f"of 2007-10-01. For data going back to 2000-10-01, use the Custom Award "
+                f"Download feature on USAspending.gov or the bulk_download API endpoints."
+            )
         return self
 
 
@@ -105,6 +122,19 @@ class Agency(BaseModel):
     ] = None
 
 
+class LocationFilter(BaseModel):
+    """Location filter for place of performance or recipient location"""
+
+    country: Annotated[str | None, Field(description="Country code, ex: 'USA'")] = None
+    state: Annotated[str | None, Field(description="State code, ex: 'CA', 'TX'")] = None
+    county: Annotated[
+        str | None, Field(description="County FIPS code, ex: '06037' for Los Angeles")
+    ] = None
+    city: Annotated[str | None, Field(description="City name")] = None
+    zip: Annotated[str | None, Field(description="5-digit ZIP code")] = None
+    district: Annotated[str | None, Field(description="Congressional district, ex: '07'")] = None
+
+
 class BaseSearchFilters(BaseModel):
     """Base filters for search requests"""
 
@@ -122,6 +152,24 @@ class BaseSearchFilters(BaseModel):
         list[str] | None,
         Field(
             description="Recipient type names, ex: ['category_business', 'sole_proprietorship', 'nonprofit', 'community_development_corporations']"
+        ),
+    ] = None
+    place_of_performance_locations: Annotated[
+        list[LocationFilter] | None,
+        Field(
+            description=(
+                "Filter by where work was performed. "
+                "Ex: [LocationFilter(country='USA', state='CA')]"
+            )
+        ),
+    ] = None
+    recipient_locations: Annotated[
+        list[LocationFilter] | None,
+        Field(
+            description=(
+                "Filter by where recipient is located. "
+                "Ex: [LocationFilter(country='USA', state='TX')]"
+            )
         ),
     ] = None
 
