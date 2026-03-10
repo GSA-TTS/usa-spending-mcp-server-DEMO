@@ -151,7 +151,20 @@ class BaseSearchFilters(BaseModel):
     recipient_type_names: Annotated[
         list[str] | None,
         Field(
-            description="Recipient type names, ex: ['category_business', 'sole_proprietorship', 'nonprofit', 'community_development_corporations']"
+            description=(
+                "Recipient type names. Valid values: "
+                "category_business, small_business, other_than_small_business, "
+                "sole_proprietorship, partnership_or_limited_liability_partnership, "
+                "corporate_entity_not_tax_exempt, corporate_entity_tax_exempt, "
+                "nonprofit, higher_education, government, "
+                "community_development_corporations, "
+                "indian_tribe_federally_recognized, "
+                "alaskan_native_corporation_owned_firm, "
+                "native_hawaiian_organization_owned_firm, "
+                "tribally_owned_firm, "
+                "individuals. "
+                "Ex: ['category_business', 'nonprofit']"
+            )
         ),
     ] = None
     place_of_performance_locations: Annotated[

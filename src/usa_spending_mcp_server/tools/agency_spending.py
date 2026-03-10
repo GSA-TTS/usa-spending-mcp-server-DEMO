@@ -160,6 +160,12 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
         fiscal year. Essential for answering "how much did agency X spend on contracts
         vs grants?"
 
+        **Important**: "contracts" and "idvs" (Indefinite Delivery Vehicles) are reported
+        as separate categories. IDVs are umbrella contracts under which individual task
+        orders are issued. For total contract spending, you may need to sum both
+        "contracts" and "idvs" amounts. The IDV amount may appear as $0 if all spending
+        is attributed to the individual task orders (contracts) underneath.
+
         Args:
             toptier_code: The toptier_code of the agency (e.g., '097' for DOD)
             fiscal_year: The fiscal year (optional, defaults to current FY)

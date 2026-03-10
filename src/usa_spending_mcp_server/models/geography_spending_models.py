@@ -28,7 +28,10 @@ class GeographicLayer(StrEnum):
 class GeographySearchFilters(BaseSearchFilters):
     """Filters for geography search - inherits from base filters"""
 
-    pass
+    keywords: Annotated[
+        list[str] | None,
+        Field(description="List of keywords to search in award descriptions"),
+    ] = None
 
 
 class GeographySearchRequest(BaseSearchRequest):
@@ -41,7 +44,8 @@ class GeographySearchRequest(BaseSearchRequest):
         Field(
             description=(
                 "Geographic layer filters. Pass an empty list to return ALL results "
-                "for the specified layer (e.g., all states, all districts)."
+                "for the specified layer (e.g., all states, all districts). "
+                "When empty, the field is omitted from the API request."
             )
         ),
     ] = []
@@ -86,3 +90,12 @@ class GeographySearchRequest(BaseSearchRequest):
                 )
 
         return v
+
+    def to_api_payload(self) -> dict:
+        """Convert to API payload, omitting geo_layer_filters when empty."""
+        payload = self.model_dump(exclude_none=True)
+        # The USAspending API rejects empty geo_layer_filters with HTTP 422.
+        # Omitting the field entirely returns all results for the layer.
+        if not payload.get("geo_layer_filters"):
+            payload.pop("geo_layer_filters", None)
+        return payload

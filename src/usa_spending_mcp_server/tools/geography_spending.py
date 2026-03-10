@@ -63,7 +63,7 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                         award_type_codes=["A","B","C","D"]
                     ))
         """
-        request_payload = geography_search_request.model_dump(exclude_none=True)
+        request_payload = geography_search_request.to_api_payload()
         base_filters = geography_search_request.filters.model_dump(exclude_none=True)
 
         async def fetch_geography():
@@ -80,9 +80,22 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                 {"filters": base_filters},
             )
 
-        geo_result, summary_result, category_result = await asyncio.gather(
-            fetch_geography(), fetch_summary(), fetch_categories(), return_exceptions=True
-        )
+        # Build tasks: always fetch geography + categories.
+        # transaction_spending_summary requires keywords — skip when absent.
+        has_keywords = bool(base_filters.get("keywords"))
+        tasks = [fetch_geography(), fetch_categories()]
+        if has_keywords:
+            tasks.insert(1, fetch_summary())
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        geo_result = results[0]
+        if has_keywords:
+            summary_result = results[1]
+            category_result = results[2]
+        else:
+            summary_result = None
+            category_result = results[1]
 
         if isinstance(geo_result, Exception):
             return {"error": f"Error fetching geography data: {geo_result}"}
@@ -98,7 +111,11 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                 "geo_layer": geography_search_request.geo_layer,
                 "results": geo_result.get("results", []),
             },
-            "summary": _safe(summary_result, lambda r: r.get("results", r)),
+            "summary": (
+                _safe(summary_result, lambda r: r.get("results", r))
+                if summary_result is not None
+                else {"note": "transaction_spending_summary requires keywords; skipped"}
+            ),
             "categories": _safe(
                 category_result,
                 lambda r: {

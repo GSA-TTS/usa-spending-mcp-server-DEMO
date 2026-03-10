@@ -76,10 +76,32 @@ class TestSearchSpendingByGeography:
         assert data["geography"]["scope"] == "place_of_performance"
         assert data["geography"]["geo_layer"] == "state"
 
-    async def test_summary_section_has_totals(self, geo_mcp_client):
-        """Summary section contains transaction_spending_summary results."""
+    async def test_summary_skipped_without_keywords(self, geo_mcp_client):
+        """Summary section is skipped when filters have no keywords."""
         result = await geo_mcp_client.call_tool("search_spending_by_geography", MINIMAL_GEO_REQUEST)
         data = result.data
+
+        assert "note" in data["summary"]
+        assert "keywords" in data["summary"]["note"]
+
+    async def test_summary_section_has_totals_with_keywords(self, mock_geo_client):
+        """Summary section contains transaction_spending_summary results when keywords present."""
+        mcp = FastMCP("test-geo-kw")
+        register_geography_tools(mcp, mock_geo_client)
+        request_with_keywords = {
+            "geography_search_request": {
+                "scope": "place_of_performance",
+                "geo_layer": "state",
+                "geo_layer_filters": ["CA"],
+                "filters": {
+                    "time_period": [{"start_date": "2023-10-01", "end_date": "2024-09-30"}],
+                    "keywords": ["broadband"],
+                },
+            }
+        }
+        async with Client(transport=mcp) as client:
+            result = await client.call_tool("search_spending_by_geography", request_with_keywords)
+            data = result.data
 
         assert data["summary"] == SAMPLE_SUMMARY_RESPONSE["results"]
 
@@ -105,10 +127,23 @@ class TestSearchSpendingByGeography:
 
         mock_geo_client.post.side_effect = failing_side_effect
 
+        # Use keywords so transaction_spending_summary is attempted (and fails)
+        request_with_keywords = {
+            "geography_search_request": {
+                "scope": "place_of_performance",
+                "geo_layer": "state",
+                "geo_layer_filters": ["CA"],
+                "filters": {
+                    "time_period": [{"start_date": "2023-10-01", "end_date": "2024-09-30"}],
+                    "keywords": ["broadband"],
+                },
+            }
+        }
+
         mcp = FastMCP("test")
         register_geography_tools(mcp, mock_geo_client)
         async with Client(transport=mcp) as client:
-            result = await client.call_tool("search_spending_by_geography", MINIMAL_GEO_REQUEST)
+            result = await client.call_tool("search_spending_by_geography", request_with_keywords)
             data = result.data
 
         assert "geography" in data

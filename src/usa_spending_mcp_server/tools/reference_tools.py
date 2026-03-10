@@ -79,7 +79,24 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
         """
         try:
             if search_term:
-                # Use autocomplete endpoint for targeted search
+                # Split multi-word queries into individual terms and merge results
+                terms = search_term.split()
+                if len(terms) > 1:
+                    all_results = []
+                    seen_slugs: set[str] = set()
+                    for term in terms:
+                        resp = await client.post(
+                            "autocomplete/glossary/",
+                            {"search_text": term},
+                        )
+                        for entry in resp.get("results", []):
+                            slug = entry.get("slug", "")
+                            if slug not in seen_slugs:
+                                seen_slugs.add(slug)
+                                all_results.append(entry)
+                    return {"results": all_results, "matched_terms": terms}
+
+                # Single-term search
                 response = await client.post(
                     "autocomplete/glossary/",
                     {"search_text": search_term},

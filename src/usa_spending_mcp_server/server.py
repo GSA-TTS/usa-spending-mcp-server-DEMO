@@ -168,6 +168,14 @@ mcp = FastMCP(
       Use `keywords` instead, or use search_spending_by_category(category="recipient")
     - award_type_codes must be from same group in search_awards.
       For cross-type analysis, make separate calls or use search_spending_over_time
+    - **Subtier agency names must be exact.** Names like "Bureau of Indian Affairs"
+      may actually be "Bureau of Indian Affairs and Bureau of Indian Education" in the API.
+      Always use get_sub_agency_list() first to discover exact subtier names.
+    - **keywords + subtier agencies** may return 0 results even when data exists.
+      Workaround: search at toptier level with keywords, or use subtier without keywords.
+    - **Contract totals from get_agency_obligations_by_award_category()** report
+      "contracts" and "idvs" (Indefinite Delivery Vehicles) separately. For total
+      contract spending, sum both categories.
 
     ### Pagination:
     - search_awards() returns awards.next_cursor when more pages exist
