@@ -76,6 +76,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install cf8-cli
 
+      - name: Generate requirements.txt from uv.lock
+        run: uv export --no-dev --no-hashes -o requirements.txt
+
       - name: Deploy to cloud.gov
         env:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}

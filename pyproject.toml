@@ -107,4 +107,5 @@ test-ci = "pytest --cov --cov-report=xml"
 ci = "task lint && task format-check && task test"
 
 # Deployment
-deploy = "cf push"
+generate-requirements = "uv export --no-dev --no-hashes -o requirements.txt"
+deploy = "task generate-requirements && cf push"
