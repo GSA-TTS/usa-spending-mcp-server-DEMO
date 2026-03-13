@@ -52,7 +52,6 @@ from usa_spending_mcp_server.tools.spending_explorer import (
 )
 from usa_spending_mcp_server.tools.spending_over_time import register_spending_over_time_tools
 from usa_spending_mcp_server.tools.subaward_spending import register_subaward_tools
-from usa_spending_mcp_server.tools.spending_over_time import register_spending_over_time_tools
 
 logger = logging.getLogger(__name__)
 
