@@ -37,6 +37,8 @@ from usa_spending_mcp_server.client import USASpendingClient
 from usa_spending_mcp_server.server import mcp as base_mcp
 from usa_spending_mcp_server.tools.agency_spending import register_agency_tools
 from usa_spending_mcp_server.tools.award_spending import register_award_search_tools
+from usa_spending_mcp_server.tools.category_spending import register_category_spending_tools
+from usa_spending_mcp_server.tools.disaster_spending import register_disaster_spending_tools
 from usa_spending_mcp_server.tools.geography_spending import register_geography_tools
 from usa_spending_mcp_server.tools.program_activity_spending import (
     register_program_activity_tools,
@@ -48,6 +50,9 @@ from usa_spending_mcp_server.tools.reference_tools import register_reference_too
 from usa_spending_mcp_server.tools.spending_explorer import (
     register_spending_explorer_tools,
 )
+from usa_spending_mcp_server.tools.spending_over_time import register_spending_over_time_tools
+from usa_spending_mcp_server.tools.subaward_spending import register_subaward_tools
+from usa_spending_mcp_server.tools.spending_over_time import register_spending_over_time_tools
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +84,15 @@ def create_server() -> FastMCP:
     logger.info("Registering tools")
     register_agency_tools(server, client)
     register_award_search_tools(server, client)
+    register_category_spending_tools(server, client)
+    register_disaster_spending_tools(server, client)
     register_geography_tools(server, client)
     register_program_activity_tools(server, client)
     register_recipient_search_tools(server, client)
     register_reference_tools(server, client)
     register_spending_explorer_tools(server, client)
+    register_spending_over_time_tools(server, client)
+    register_subaward_tools(server, client)
     logger.info("Tools registered")
 
     return server
