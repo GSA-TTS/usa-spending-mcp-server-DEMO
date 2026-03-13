@@ -27,6 +27,17 @@ def register_spending_over_time_tools(mcp: FastMCP, client: USASpendingClient):
             bool,
             Field(description="If True, return subaward spending over time."),
         ] = False,
+        def_codes: Annotated[
+            list[str] | None,
+            Field(
+                description=(
+                    "Optional list of Disaster Emergency Fund Codes (DEFC) to filter by. "
+                    "Use get_def_codes() to see available codes. "
+                    "Common: 'L','M','N' (COVID-19), 'O' (Infrastructure). "
+                    "Enables tracking disaster spending trends over time."
+                )
+            ),
+        ] = None,
     ) -> Any:
         """
         Get spending trends over time — standalone tool for time-series analysis.
@@ -41,6 +52,7 @@ def register_spending_over_time_tools(mcp: FastMCP, client: USASpendingClient):
         - "What are the trends in grant vs contract spending?"
         - "How has agency X's spending changed year over year?"
         - Computing total obligation amounts for a filtered set of awards
+        - "How did disaster spending change between FY2020 and FY2023?" (use def_codes)
 
         Args:
             filters: Search filters (same as search_awards):
@@ -54,6 +66,7 @@ def register_spending_over_time_tools(mcp: FastMCP, client: USASpendingClient):
                 - recipient_locations: e.g. [{country: "USA", state: "TX"}]
             group: Time grouping — 'fiscal_year', 'quarter', or 'month'
             subawards: If True, return subaward spending instead of prime awards
+            def_codes: Optional DEFC codes for disaster spending trends (e.g., ["L","M","N"])
 
         Returns:
             Dict with:
@@ -83,9 +96,12 @@ def register_spending_over_time_tools(mcp: FastMCP, client: USASpendingClient):
             )
         """
         try:
+            filters_payload = filters.model_dump(exclude_none=True)
+            if def_codes:
+                filters_payload["def_codes"] = def_codes
             payload = {
                 "group": group.value,
-                "filters": filters.model_dump(exclude_none=True),
+                "filters": filters_payload,
                 "subawards": subawards,
             }
             response = await client.post("search/spending_over_time/", payload)

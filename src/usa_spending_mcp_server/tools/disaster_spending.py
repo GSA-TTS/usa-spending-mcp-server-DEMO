@@ -26,7 +26,8 @@ def register_disaster_spending_tools(mcp: FastMCP, client: USASpendingClient):
             Dict with overview of disaster funding including totals by DEFC.
         """
         try:
-            response = await client.get("disaster/overview/")
+            # disaster/overview/ is a POST endpoint requiring spending_type
+            response = await client.post("disaster/overview/", {"spending_type": "obligation"})
             return response
         except Exception as e:
             return {"error": f"Error fetching disaster overview: {e}"}
@@ -83,9 +84,16 @@ def register_disaster_spending_tools(mcp: FastMCP, client: USASpendingClient):
             )
         """
         try:
+            # The disaster/agency/spending/ endpoint only accepts
+            # spending_type='total' or 'award', not 'obligation'/'outlay'.
+            # Map accordingly: obligation→total, outlay→total, face_value_of_loan→total
+            agency_spending_type = "total"
+            if spending_type == DisasterSpendingType.FACE_VALUE_OF_LOAN:
+                agency_spending_type = "award"
+
             payload = {
                 "filter": filters.model_dump(exclude_none=True),
-                "spending_type": spending_type.value,
+                "spending_type": agency_spending_type,
             }
             count_payload = {
                 "filter": filters.model_dump(exclude_none=True),

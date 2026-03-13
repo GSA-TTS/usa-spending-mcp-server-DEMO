@@ -37,6 +37,11 @@ def register_subaward_tools(mcp: FastMCP, client: USASpendingClient):
         A prime award is money from the federal government directly to a recipient.
         A subaward is when that recipient passes funds downstream to sub-recipients.
 
+        DATA QUALITY WARNING: When sorting by amount descending, top results may contain
+        astronomically wrong values (e.g., $1 quadrillion) due to data entry errors in the
+        source USAspending.gov database. Results with amounts > $1 trillion are flagged
+        with a data_quality_warning field. Filter by a specific prime award for reliable data.
+
         Args:
             award_id: Optional prime award ID to filter by
             page: Page number
@@ -67,6 +72,26 @@ def register_subaward_tools(mcp: FastMCP, client: USASpendingClient):
                 payload["award_id"] = award_id
 
             response = await client.post("subawards/", payload)
+
+            # Flag data quality issues: subawards > $1T are almost certainly errors
+            outlier_threshold = 1_000_000_000_000  # $1 trillion
+            results = response.get("results", [])
+            outlier_count = 0
+            for record in results:
+                amt = record.get("amount")
+                if amt is not None and abs(amt) > outlier_threshold:
+                    record["data_quality_warning"] = (
+                        "Amount exceeds $1T — likely a data entry error in USAspending.gov"
+                    )
+                    outlier_count += 1
+
+            if outlier_count > 0:
+                response["data_quality_note"] = (
+                    f"{outlier_count} result(s) flagged with amounts > $1T. "
+                    "These are known data entry errors in the source database. "
+                    "Filter by a specific prime award_id for reliable subaward data."
+                )
+
             return response
         except Exception as e:
             return {"error": f"Error searching subawards: {e}"}

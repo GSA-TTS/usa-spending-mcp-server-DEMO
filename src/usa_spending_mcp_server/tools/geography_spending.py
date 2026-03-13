@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from typing import Any
 
 from fastmcp import FastMCP
@@ -105,11 +106,22 @@ def register_geography_tools(mcp: FastMCP, client: USASpendingClient):
                 return {"error": str(result)}
             return transform(result) if transform else result
 
+        # Sort results client-side by aggregated_amount descending.
+        # The API may not reliably sort for all-districts/all-counties queries.
+        geo_results = geo_result.get("results", [])
+        sort_field = geography_search_request.sort or "aggregated_amount"
+        with contextlib.suppress(TypeError, KeyError):
+            geo_results = sorted(
+                geo_results,
+                key=lambda r: abs(r.get(sort_field, 0) or 0),
+                reverse=True,
+            )
+
         return {
             "geography": {
                 "scope": geography_search_request.scope,
                 "geo_layer": geography_search_request.geo_layer,
-                "results": geo_result.get("results", []),
+                "results": geo_results,
             },
             "summary": (
                 _safe(summary_result, lambda r: r.get("results", r))
