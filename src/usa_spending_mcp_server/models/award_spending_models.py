@@ -51,7 +51,17 @@ class AwardSearchFilters(BaseSearchFilters):
         list[str] | None, Field(description="List of keywords to search in award descriptions")
     ] = None
     award_type_codes: Annotated[
-        list[AwardTypeCode] | None, Field(description="List of award type codes")
+        list[AwardTypeCode] | None,
+        Field(
+            description=(
+                "List of award type codes. Defaults to contracts only [A, B, C, D]. "
+                "IMPORTANT: All codes must be from the same group — mixing groups returns HTTP 422. "
+                "For cross-type totals, make separate calls per group and sum the results, "
+                "or use search_spending_by_category() which aggregates across all types. "
+                "Groups: Contracts=[A,B,C,D], Grants=[02,03,04,05], "
+                "DirectPayments=[06,10], Loans=[07,08], Other=[09,11,-1]"
+            )
+        ),
     ] = [
         AwardTypeCode.BPA_CALL,
         AwardTypeCode.PURCHASE_ORDER,

@@ -48,8 +48,10 @@ class TestGetGlossary:
 
     async def test_with_search_term_calls_autocomplete(self, mock_usa_client, reference_mcp_client):
         """get_glossary with search_term uses autocomplete endpoint."""
+        # Real API returns strings in 'results' and full objects in 'matched_terms'
         autocomplete_response = {
-            "results": [{"term": "obligation", "plain_text": "A binding agreement."}]
+            "results": ["Obligation"],
+            "matched_terms": [{"term": "Obligation", "slug": "obligation", "plain": "A binding agreement."}],
         }
         mock_usa_client.post.side_effect = None
         mock_usa_client.post.return_value = autocomplete_response
@@ -60,7 +62,10 @@ class TestGetGlossary:
         mock_usa_client.post.assert_called_once_with(
             "autocomplete/glossary/", {"search_text": "obligation"}
         )
-        assert data["results"][0]["term"] == "obligation"
+        # New format: results = list of term name strings; matched_terms = full objects
+        assert data["results"][0] == "Obligation"
+        assert data["matched_terms"][0]["term"] == "Obligation"
+        assert data["count"] == 1
 
 
 class TestGetAwardTypes:

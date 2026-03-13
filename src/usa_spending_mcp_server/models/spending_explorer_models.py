@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.functional_validators import field_validator
 
 
@@ -95,6 +95,15 @@ class DetailedFilter(BaseModel):
             if "Data not available" in str(e):
                 raise e
             raise ValueError("Fiscal year must be a valid year") from e
+
+    @model_validator(mode="after")
+    def require_period_or_quarter(self):
+        if self.quarter is None and self.period is None:
+            raise ValueError(
+                "DetailedFilter requires either 'quarter' or 'period'. "
+                "For full fiscal year data use quarter='4'."
+            )
+        return self
 
 
 class SpendingExplorerRequest(BaseModel):

@@ -163,8 +163,14 @@ def register_agency_tools(mcp: FastMCP, client: USASpendingClient):
         **Important**: "contracts" and "idvs" (Indefinite Delivery Vehicles) are reported
         as separate categories. IDVs are umbrella contracts under which individual task
         orders are issued. For total contract spending, you may need to sum both
-        "contracts" and "idvs" amounts. The IDV amount may appear as $0 if all spending
-        is attributed to the individual task orders (contracts) underneath.
+        "contracts" and "idvs" amounts.
+
+        **IDV = $0 behavior**: For agencies like DOD, IDVs commonly appear as $0 because
+        obligations are attributed entirely to child task orders (counted under "contracts")
+        rather than the IDV umbrella itself. When IDVs = $0, do NOT add it — the contracts
+        figure already captures that spending. This endpoint may also under-count total
+        contract obligations compared to search_spending_by_category(); cross-check with
+        that tool for a comprehensive figure.
 
         Args:
             toptier_code: The toptier_code of the agency (e.g., '097' for DOD)

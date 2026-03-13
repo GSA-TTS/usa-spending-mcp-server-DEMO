@@ -112,9 +112,20 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             - transaction_spending_summary requires `keywords` in filters; the tool skips
               this call automatically when keywords are absent.
             - Award Amount in results is the *total award value*, not FY-specific obligations.
-              For FY-specific obligation data, use get_award_details on individual awards.
+              For FY-specific obligation data, use search_spending_over_time() or read
+              summary.totals.prime_awards_obligation_amount (from spending_over_time).
         """
         filters_payload = award_search_request.model_dump(exclude_none=True)
+
+        # Warn when recipient_search_text + agencies are combined (known to return 0 results)
+        warnings: list[str] = []
+        filters = award_search_request.filters
+        if filters.recipient_search_text and filters.agencies:
+            warnings.append(
+                "WARNING: recipient_search_text + agencies filters are unreliable together "
+                "and may return 0 results. If you get no results, retry using "
+                "keywords=[recipient_name] instead of recipient_search_text."
+            )
 
         # --- Cursor path: only fetch next page of awards ---
         if cursor is not None:
@@ -203,8 +214,14 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             supplementary_tasks.append(fetch_category())
             task_keys.append("category")
 
-        # Gather awards + all supplementary in parallel
-        all_coros = [fetch_awards(), *supplementary_tasks]
+        # Gather awards + all supplementary in parallel with per-call timeout
+        async def _with_timeout(coro, timeout: float = 30.0):
+            try:
+                return await asyncio.wait_for(coro, timeout=timeout)
+            except TimeoutError as e:
+                raise Exception(f"Request timed out after {timeout}s") from e
+
+        all_coros = [_with_timeout(fetch_awards()), *[_with_timeout(c) for c in supplementary_tasks]]
         results = await asyncio.gather(*all_coros, return_exceptions=True)
 
         awards_result = results[0]
@@ -250,10 +267,30 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
         if "totals" not in summary_section and over_time_data is not None:
             ot_results = over_time_data.get("results", [])
             total_obligations = sum(r.get("aggregated_amount", 0) for r in ot_results)
-            summary_section["totals"] = {
+            totals_entry: dict[str, Any] = {
                 "prime_awards_obligation_amount": total_obligations,
                 "source": "spending_over_time",
             }
+            # Warn if active filters may cause the spending_over_time total to be inaccurate
+            _f = award_search_request.filters
+            has_narrowing_filters = any([
+                _f.recipient_locations,
+                _f.place_of_performance_locations,
+                _f.recipient_type_names,
+                _f.recipient_search_text,
+            ])
+            if has_narrowing_filters:
+                totals_entry["note"] = (
+                    "CAUTION: This total is computed via spending_over_time and may NOT "
+                    "apply all active filters (geographic, recipient type, recipient name). "
+                    "Use search_spending_by_category() or search_spending_over_time() "
+                    "for accurate filtered totals."
+                )
+                warnings.append(
+                    "summary.totals may be inaccurate: spending_over_time does not fully "
+                    "apply geographic/recipient filters. See summary.totals.note."
+                )
+            summary_section["totals"] = totals_entry
 
         # Build trends section
         if include_time_trends:
@@ -298,6 +335,8 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             "awards": awards_section,
             "summary": summary_section,
         }
+        if warnings:
+            response_body["warnings"] = warnings
         if include_time_trends:
             response_body["trends"] = trends_section
         if include_geography:

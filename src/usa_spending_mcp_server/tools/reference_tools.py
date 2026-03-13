@@ -77,31 +77,61 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
             get_glossary(search_term="prime award")
             get_glossary()  # returns term names only
         """
+
+        def _glossary_variants(term: str) -> list[str]:
+            """Return search variants to improve recall for hyphenated/compound terms."""
+            variants = [term]
+            # "subaward" → also try "sub-award"; "deobligation" → "de-obligation"
+            no_hyphen = term.replace("-", "").replace(" ", "")
+            if no_hyphen != term and no_hyphen not in variants:
+                variants.append(no_hyphen)
+            # Try inserting hyphens after common prefixes
+            for prefix in ("sub", "de", "re", "pre", "co"):
+                if term.startswith(prefix) and len(term) > len(prefix) and "-" not in term:
+                    hyphenated = prefix + "-" + term[len(prefix):]
+                    if hyphenated not in variants:
+                        variants.append(hyphenated)
+            return variants
+
+        async def _query_glossary(term: str) -> list[dict]:
+            """Query autocomplete/glossary and return matched_terms list (full objects)."""
+            try:
+                resp = await client.post("autocomplete/glossary/", {"search_text": term})
+                if not isinstance(resp, dict):
+                    return []
+                return resp.get("matched_terms", resp.get("results", []))
+            except Exception:
+                return []
+
         try:
             if search_term:
-                # Split multi-word queries into individual terms and merge results
-                terms = search_term.split()
-                if len(terms) > 1:
-                    all_results = []
-                    seen_slugs: set[str] = set()
-                    for term in terms:
-                        resp = await client.post(
-                            "autocomplete/glossary/",
-                            {"search_text": term},
-                        )
-                        for entry in resp.get("results", []):
-                            slug = entry.get("slug", "")
-                            if slug not in seen_slugs:
-                                seen_slugs.add(slug)
-                                all_results.append(entry)
-                    return {"results": all_results, "matched_terms": terms}
+                # Collect all candidate query words (original + variants for each word)
+                words = search_term.split()
+                query_terms: list[str] = []
+                for word in words:
+                    for variant in _glossary_variants(word):
+                        if variant not in query_terms:
+                            query_terms.append(variant)
 
-                # Single-term search
-                response = await client.post(
-                    "autocomplete/glossary/",
-                    {"search_text": search_term},
-                )
-                return response
+                all_results: list[dict] = []
+                seen_slugs: set[str] = set()
+                result_names: list[str] = []
+
+                for term in query_terms:
+                    entries = await _query_glossary(term)
+                    for entry in entries:
+                        slug = entry.get("slug", "")
+                        if slug not in seen_slugs:
+                            seen_slugs.add(slug)
+                            all_results.append(entry)
+                            result_names.append(entry.get("term", ""))
+
+                return {
+                    "search_text": search_term,
+                    "results": result_names,
+                    "count": len(all_results),
+                    "matched_terms": all_results,
+                }
 
             # Without search term, get full glossary but return compact index
             response = await client.get("references/glossary/")
