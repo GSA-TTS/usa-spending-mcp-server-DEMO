@@ -221,7 +221,10 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             except TimeoutError as e:
                 raise Exception(f"Request timed out after {timeout}s") from e
 
-        all_coros = [_with_timeout(fetch_awards()), *[_with_timeout(c) for c in supplementary_tasks]]
+        all_coros = [
+            _with_timeout(fetch_awards()),
+            *[_with_timeout(c) for c in supplementary_tasks],
+        ]
         results = await asyncio.gather(*all_coros, return_exceptions=True)
 
         awards_result = results[0]
@@ -273,12 +276,14 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
             }
             # Warn if active filters may cause the spending_over_time total to be inaccurate
             _f = award_search_request.filters
-            has_narrowing_filters = any([
-                _f.recipient_locations,
-                _f.place_of_performance_locations,
-                _f.recipient_type_names,
-                _f.recipient_search_text,
-            ])
+            has_narrowing_filters = any(
+                [
+                    _f.recipient_locations,
+                    _f.place_of_performance_locations,
+                    _f.recipient_type_names,
+                    _f.recipient_search_text,
+                ]
+            )
             if has_narrowing_filters:
                 totals_entry["note"] = (
                     "CAUTION: This total is computed via spending_over_time and may NOT "

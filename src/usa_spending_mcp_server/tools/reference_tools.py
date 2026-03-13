@@ -88,7 +88,7 @@ def register_reference_tools(mcp: FastMCP, client: USASpendingClient):
             # Try inserting hyphens after common prefixes
             for prefix in ("sub", "de", "re", "pre", "co"):
                 if term.startswith(prefix) and len(term) > len(prefix) and "-" not in term:
-                    hyphenated = prefix + "-" + term[len(prefix):]
+                    hyphenated = prefix + "-" + term[len(prefix) :]
                     if hyphenated not in variants:
                         variants.append(hyphenated)
             return variants

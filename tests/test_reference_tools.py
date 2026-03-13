@@ -51,7 +51,9 @@ class TestGetGlossary:
         # Real API returns strings in 'results' and full objects in 'matched_terms'
         autocomplete_response = {
             "results": ["Obligation"],
-            "matched_terms": [{"term": "Obligation", "slug": "obligation", "plain": "A binding agreement."}],
+            "matched_terms": [
+                {"term": "Obligation", "slug": "obligation", "plain": "A binding agreement."}
+            ],
         }
         mock_usa_client.post.side_effect = None
         mock_usa_client.post.return_value = autocomplete_response
