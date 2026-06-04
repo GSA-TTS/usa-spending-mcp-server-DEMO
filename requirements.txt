@@ -175,7 +175,7 @@ secretstorage==3.5.0 ; sys_platform == 'linux'
     # via keyring
 sse-starlette==3.3.4
     # via mcp
-starlette==1.0.0
+starlette==1.0.1
     # via
     #   mcp
     #   sse-starlette
