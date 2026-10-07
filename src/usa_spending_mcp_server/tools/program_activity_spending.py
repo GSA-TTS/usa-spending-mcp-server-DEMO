@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 from usa_spending_mcp_server.client import USASpendingClient
 
@@ -10,7 +11,13 @@ def register_program_activity_tools(mcp: FastMCP, client: USASpendingClient):
 
     @mcp.tool()
     async def list_program_activities(
-        toptier_code: Annotated[str, "The toptier code of the agency (e.g., '086', '097')"],
+        toptier_code: Annotated[
+            str,
+            Field(
+                pattern=r"^\d{3}$",
+                description="The three-digit toptier agency code (e.g., '086', '097')",
+            ),
+        ],
         fiscal_year: Annotated[
             str | None, "The fiscal year to query (optional; defaults to current FY)"
         ] = None,

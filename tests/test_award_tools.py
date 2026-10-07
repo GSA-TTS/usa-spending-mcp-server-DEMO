@@ -3,6 +3,7 @@
 import base64
 import json
 
+import pytest
 from fastmcp import FastMCP
 from fastmcp.client import Client
 
@@ -350,3 +351,22 @@ class TestGetAwardDetails:
         assert data["success_count"] == 1
         assert data["error_count"] == 1
         assert "CONT_BAD" in data["errors"]
+
+    @pytest.mark.parametrize(
+        "award_id",
+        ["../references/glossary", "https://example.com", "CONT%2FAWD", "CONT AWA"],
+    )
+    async def test_rejects_invalid_award_id(self, mock_usa_client, award_id):
+        """Invalid award IDs are rejected before an API path is constructed."""
+        mcp = FastMCP("test")
+        register_award_search_tools(mcp, mock_usa_client)
+
+        async with Client(transport=mcp) as client:
+            result = await client.call_tool(
+                "get_award_details",
+                {"award_ids": [award_id]},
+                raise_on_error=False,
+            )
+
+        assert result.is_error
+        mock_usa_client.get.assert_not_awaited()

@@ -354,10 +354,21 @@ def register_award_search_tools(mcp: FastMCP, client: USASpendingClient):
     @mcp.tool()
     async def get_award_details(
         award_ids: Annotated[
-            list[str], Field(description="List of award IDs", min_length=1, max_length=10)
+            list[
+                Annotated[
+                    str,
+                    Field(
+                        min_length=1,
+                        max_length=255,
+                        pattern=r"^[A-Za-z0-9_-]+$",
+                    ),
+                ]
+            ],
+            Field(description="List of award IDs", min_length=1, max_length=10),
         ],
         max_concurrent: Annotated[
-            int, Field(default=10, description="Maximum number of concurrent requests")
+            int,
+            Field(default=10, ge=1, le=10, description="Maximum number of concurrent requests"),
         ] = 10,
     ) -> Any:
         """
