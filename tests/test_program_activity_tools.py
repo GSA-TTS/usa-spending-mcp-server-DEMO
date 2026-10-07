@@ -56,3 +56,19 @@ class TestListProgramActivities:
         """Tool returns the API response."""
         result = await pa_mcp_client.call_tool("list_program_activities", {"toptier_code": "097"})
         assert result.data is not None
+
+    @pytest.mark.parametrize("toptier_code", ["97", "097/../awards", "abc"])
+    async def test_rejects_invalid_toptier_code(self, mock_pa_client, toptier_code):
+        """Invalid agency codes are rejected before an API path is constructed."""
+        mcp = FastMCP("test")
+        register_program_activity_tools(mcp, mock_pa_client)
+
+        async with Client(transport=mcp) as client:
+            result = await client.call_tool(
+                "list_program_activities",
+                {"toptier_code": toptier_code},
+                raise_on_error=False,
+            )
+
+        assert result.is_error
+        mock_pa_client.get.assert_not_awaited()
